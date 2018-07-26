@@ -119,6 +119,28 @@ def parse(func):
     return graph
 
 
+class AssignmentCollector(ast.NodeVisitor):
+    def __init__(self):
+        self.assigned = set()
+
+    # def visit_FunctionDef(self, node):
+    #     for arg in node.args.args:
+
+    def visit_Assign(self, node):
+
+        def visit(targ):
+            if isinstance(targ, ast.Name):
+                self.assigned.add(targ.id)
+            elif isinstance(targ, ast.Tuple):
+                for i, elt in enumerate(targ.elts):
+                    visit(elt)
+            else:
+                raise NotImplementedError(node.targets)  # pragma: no cover
+
+        for targ in node.targets:
+            visit(targ)
+
+
 class Parser:
     """Parser for a function.
 
@@ -151,6 +173,7 @@ class Parser:
         self.closure_namespace = ClosureNamespace(self.function)
         # Will be set later
         self.graph = None
+        self.assigned = None
 
     def make_location(self, node: ast.AST) -> Location:
         """Create a Location from an AST node."""
@@ -183,6 +206,9 @@ class Parser:
         """Parse the function into a Myia graph."""
         tree = ast.parse(textwrap.dedent(inspect.getsource(self.function)))
         function_def = tree.body[0]
+        acoll = AssignmentCollector()
+        acoll.visit(function_def)
+        self.assigned = acoll.assigned
         assert isinstance(function_def, ast.FunctionDef)
         graph = self._process_function(None, function_def)[1].graph
         return graph
@@ -687,7 +713,7 @@ class Block:
         """
         if varnum in self.variables:
             return _fresh(self.variables[varnum])
-        if self.matured:
+        if self.matured or varnum not in self.parser.assigned:
             if len(self.preds) == 1:
                 return self.preds[0].read(varnum)
             elif not self.preds:
