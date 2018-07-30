@@ -266,6 +266,10 @@ class Apply(ANFNode):
         app.type = self.type
         return app
 
+    def __str__(self):
+        params = ', '.join(p.debug.debug_name for p in self.inputs)
+        return f"{self.debug.debug_name}({params})"
+
     def __repr__(self) -> str:
         return repr_(self, name=self.debug.debug_name, inputs=self.inputs,
                      graph=self.graph)
@@ -325,7 +329,7 @@ class Constant(ANFNode):
     def __str__(self) -> str:
         if isinstance(self.value, LITERALS):
             return str(self.value)
-        return super().__str__()
+        return f"{super().__str__()}<{self.value}>"
 
     def __repr__(self) -> str:
         return repr_(self, name=self.debug.debug_name, value=self.value)
