@@ -8,12 +8,18 @@ implementation.
 from collections import defaultdict
 from typing import Iterable, Mapping, Any, List
 
-from .ir import Graph, Apply, Constant, Parameter, ANFNode
-from .ir.utils import is_constant_graph, is_constant
+from .ir import Graph, Apply, Parameter, ANFNode
+from .ir.utils import is_constant_graph, is_constant, is_apply, is_parameter
 from .prim import Primitive
 from .prim.ops import if_, return_, partial
-from .graph_utils import toposort
 from .utils import TypeMap
+
+
+def is_partial(node):
+    """Returns True if node is an application of partial."""
+    return (is_apply(node) and
+            is_constant(node.inputs[0]) and
+            node.inputs[0].value == partial)
 
 
 class VMFrame:
@@ -42,6 +48,8 @@ class VMFrame:
         self.closure = closure
 
     def __getitem__(self, node: ANFNode):
+        if is_constant_graph(node):
+            node = node.value
         if node in self.values:
             return self.values[node]
         elif self.closure is not None and node in self.closure:
@@ -49,6 +57,8 @@ class VMFrame:
         elif is_constant(node):
             # Should be a constant
             return node.value
+        if isinstance(node, Graph):
+            return node
         else:
             raise ValueError(node)  # pragma: no cover
 
@@ -73,12 +83,20 @@ class Partial:
     def __init__(self, fn, args, vm):
         """Build a partial."""
         self.fn = fn
-        self.args = tuple(args)
+        if args is not None:
+            self.args = tuple(args)
+        else:
+            self.args = None
         self.vm = vm
 
     def __call__(self, *args):
         """Evaluates the partial."""
         return self.vm.call(self.fn, self.args + args)
+
+
+class Prealloc:
+    def __init__(self, node):
+        self.node = node
 
 
 class VM:
@@ -116,7 +134,7 @@ class VM:
         rval = set()
         for fv in graph.free_variables_total:
             if isinstance(fv, Graph):
-                rval.update(ct for ct in graph.constants if ct.value is fv)
+                rval.add(fv)
             else:
                 rval.add(fv)
         return rval
@@ -165,7 +183,7 @@ class VM:
         if len(args) != len(graph.parameters):
             raise RuntimeError("Call with wrong number of arguments")
 
-        top_frame = VMFrame(toposort(graph.return_, self._succ_vm),
+        top_frame = VMFrame(self._toposort(graph.return_),
                             dict(zip(graph.parameters, args)),
                             closure=closure)
         frames = [top_frame]
@@ -191,13 +209,66 @@ class VM:
                 else:
                     return self.export(r.value)
 
+    def _toposort(self, root: ANFNode, closure=None) -> List[ANFNode]:
+        done = set()
+        prepend = set()
+        todo = [root]
+        rank = {}
+        res = []
+        pres = []
+
+        if closure is not None:
+            done.update(closure.keys())
+
+        while todo:
+            node = todo[-1]
+            if node in done:
+                todo.pop()
+                continue
+            if node in rank and rank[node] != len(todo):
+                pos = len(todo) - 1
+                n = node
+                while not self._is_break_point(n) and pos >= rank[node]:
+                    pos -= 1
+                    n = todo[pos]
+                if pos < rank[node]:
+                    raise ValueError('cycle')
+                prepend.add(n)
+                pres.append(Prealloc(n))
+                del todo[pos:]
+                continue
+            rank[node] = len(todo)
+            cont = False
+            for i in self._succ_vm(node):
+                if i not in done and i not in prepend:
+                    todo.append(i)
+                    cont = True
+            if cont:
+                continue
+            done.add(node)
+            res.append(node)
+            todo.pop()
+
+        res = pres + res
+        return res
+
+    def _is_break_point(self, node):
+        """Return if a cycle can be broken at this node."""
+        return (is_partial(node) or
+                # It's a closure
+                (isinstance(node, Graph) and
+                 len(self._vars[node]) != 0))
+
     def _succ_vm(self, node: ANFNode) -> Iterable[ANFNode]:
         """Follow node.incoming and free variables."""
-        for i in node.inputs:
-            if i.graph == node.graph or is_constant_graph(i):
-                yield i
-        if is_constant_graph(node):
-            yield from self._vars[node.value]
+        if isinstance(node, Graph):
+            yield from self._vars[node]
+        else:
+            for i in node.inputs:
+                if i.graph == node.graph and not is_parameter(i):
+                    yield i
+                if is_constant_graph(i):
+                    yield i.value
 
     def call(self, fn, args):
         """Call the `fn` object.
@@ -228,15 +299,19 @@ class VM:
         if len(args) != len(graph.parameters):
             raise RuntimeError("Call with wrong number of arguments")
 
-        raise self._Call(VMFrame(toposort(graph.return_, self._succ_vm),
+        raise self._Call(VMFrame(self._toposort(graph.return_, closure=clos),
                                  dict(zip(graph.parameters, args)),
                                  closure=clos))
 
-    def _make_closure(self, graph: Graph, frame: VMFrame) -> Closure:
+    def _make_closure(self, graph: Graph, frame: VMFrame, closure=None):
         clos = dict()
         for v in self._vars[graph]:
             clos[v] = frame[v]
-        return Closure(graph, clos)
+        if closure is None:
+            closure = Closure(graph, None)
+        assert closure.values is None
+        closure.values = clos
+        return closure
 
     def _dispatch_call(self, node, frame, fn, args):
         if isinstance(fn, Primitive):
@@ -248,7 +323,11 @@ class VM:
                 raise self._Return(args[0])
             elif fn == partial:
                 partial_fn, *partial_args = args
-                res = Partial(partial_fn, partial_args, self)
+                res = frame.values.get(node, Partial(None, None, self))
+                assert res.fn is None
+                res.fn = partial_fn
+                assert res.args is None
+                res.args = tuple(partial_args)
                 frame.values[node] = res
             else:
                 frame.values[node] = self.implementations[fn](self, *args)
@@ -260,15 +339,14 @@ class VM:
             raise AssertionError(f'Invalid fn to call: {fn}')
 
     def _handle_node(self, node: ANFNode, frame: VMFrame):
-        if isinstance(node, Constant):
+        if isinstance(node, Graph):
             if frame.closure is not None and node in frame.closure:
                 return
 
             # We only visit constant graphs
-            assert is_constant_graph(node)
-            g = node.value
-            if len(self._vars[g]) != 0:
-                frame.values[node] = self._make_closure(g, frame)
+            if len(self._vars[node]) != 0:
+                frame.values[node] = self._make_closure(
+                    node, frame, closure=frame.values.get(node, None))
             # We don't need to do anything special for non-closures
 
         elif isinstance(node, Parameter):
@@ -277,6 +355,16 @@ class VM:
         elif isinstance(node, Apply):
             fn, *args = (frame[inp] for inp in node.inputs)
             self._dispatch_call(node, frame, fn, args)
+
+        elif isinstance(node, Prealloc):
+            if frame.closure is not None and node.node in frame.closure:
+                return
+            if isinstance(node.node, Graph):
+                frame.values[node.node] = Closure(node.node, None)
+            elif is_partial(node.node):
+                frame.values[node.node] = Partial(None, None, self)
+            else:
+                raise RuntimeError("Unsupported Prealloc type")
 
         else:
             raise AssertionError("Unknown node type")  # pragma: no cover
