@@ -95,7 +95,10 @@ class Partial:
 
 
 class Prealloc:
+    """Marker to preallocate a recursive structure."""
+
     def __init__(self, node):
+        """Create a Prealloc for `node`."""
         self.node = node
 
 
