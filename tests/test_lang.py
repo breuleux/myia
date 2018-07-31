@@ -274,6 +274,33 @@ def test_nested_while(x, y):
 
 
 @parse_compare(10)
+def test_chained_closures(x):
+    def f():
+        return x
+
+    def g():
+        return f()
+
+    def h():
+        return g()
+
+    return h()
+
+
+@parse_compare(20)
+def test_nested_closures(x):
+    def f():
+        return x
+
+    def g(y):
+        def h():
+            return f() + y
+        return h()
+
+    return g(x)
+
+
+@parse_compare(10)
 def test_return_in_while(x):
     while x > 0:
         x = x - 1
