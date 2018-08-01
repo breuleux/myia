@@ -231,11 +231,17 @@ class VM:
             if node in rank and rank[node] != len(todo):
                 pos = len(todo) - 1
                 n = node
-                while not self._is_break_point(n) and pos >= rank[node]:
-                    pos -= 1
-                    n = todo[pos]
+                if not self._is_break_point(n) and pos >= rank[node]:
+                    # Try to uncomment while loop when this happens and test if this
+                    # solves the issue.
+                    raise AssertionError(
+                        'Circular references are only allowed through Partial'
+                    )
+                # while not self._is_break_point(n) and pos >= rank[node]:
+                #     pos -= 1
+                #     n = todo[pos]
                 if pos < rank[node]:
-                    raise ValueError('cycle')
+                    raise ValueError('cycle')  # pragma: no cover
                 prepend.add(n)
                 pres.append(Prealloc(n))
                 del todo[pos:]
@@ -343,9 +349,6 @@ class VM:
 
     def _handle_node(self, node: ANFNode, frame: VMFrame):
         if isinstance(node, Graph):
-            if frame.closure is not None and node in frame.closure:
-                return
-
             # We only visit constant graphs
             if len(self._vars[node]) != 0:
                 frame.values[node] = self._make_closure(
@@ -360,14 +363,12 @@ class VM:
             self._dispatch_call(node, frame, fn, args)
 
         elif isinstance(node, Prealloc):
-            if frame.closure is not None and node.node in frame.closure:
-                return
             if isinstance(node.node, Graph):
                 frame.values[node.node] = Closure(node.node, None)
             elif is_partial(node.node):
                 frame.values[node.node] = Partial(None, None, self)
             else:
-                raise RuntimeError("Unsupported Prealloc type")
+                raise AssertionError("Unsupported Prealloc type")
 
         else:
             raise AssertionError("Unknown node type")  # pragma: no cover
