@@ -268,6 +268,28 @@ class Function(Object):
         return cls.make_subtype(arguments=arguments, retval=retval)
 
 
+class JTagged(Object):
+    """Represents a type tagged through the J function."""
+
+    subtype: Type
+
+
+class NodeType(Object):
+    """Represents a node type (this is a symbol type of sorts)."""
+
+    node: 'ANFNode'
+
+
+class SensitivityMap(Object):
+    """Represents a sensitivity map.
+
+    This is not parameterizable, but roughly corresponds to a map from
+    node identifiers to List[node.type]. It is the type of the gradient of
+    a function or closure. Different closures will get and set different
+    keys in this map, but the type itself is the same.
+    """
+
+
 class TypeType(Type):
     """The type of a Type."""
 
