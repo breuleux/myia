@@ -585,3 +585,27 @@ def _list_reduce_vm(vm, fn, lst, dflt):
     def fn_(a, b):
         return vm.call(fn, [a, b])
     return list_reduce(fn_, lst, dflt)
+
+
+@register(primops.J)
+def J(x):
+    """Implement `J`."""
+    raise NotImplementedError()
+
+
+@register(primops.Jinv)
+def Jinv(x):
+    """Implement `Jinv`."""
+    raise NotImplementedError()
+
+
+@register(primops.pushenv)
+def pushenv(env, key, x):
+    """Implement `pushenv`."""
+    raise NotImplementedError()
+
+
+@register(primops.pullenv)
+def pullenv(env, key):
+    """Implement `pullenv`."""
+    raise NotImplementedError()

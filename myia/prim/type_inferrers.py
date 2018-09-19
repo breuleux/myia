@@ -5,7 +5,8 @@ from functools import partial
 from operator import getitem
 
 from ..dtype import Int, Float, Bool, Tuple, List, Array, UInt, Number, \
-    TypeType, Class, Function, pytype_to_myiatype, Problem, type_cloner
+    TypeType, Class, Function, pytype_to_myiatype, Problem, type_cloner, \
+    JTagged, NodeType, SensitivityMap
 from ..infer import ANYTHING, GraphInferrer, PartialInferrer, \
     MyiaTypeError, register_inferrer, Track, Inferrer, MetaGraphInferrer, \
     ExplicitInferrer, VOID, TransformedReference, MultiInferrer
@@ -518,3 +519,27 @@ async def infer_type_list_reduce(track, fn, lst, dflt):
     xref = TransformedReference(track.engine, getelement, lst)
     res_elem_t = await track.assert_same(fn_t(xref, xref), dflt)
     return res_elem_t
+
+
+@type_inferrer(P.J, nargs=1)
+async def infer_type_J(track, x):
+    """Infer the return type of J."""
+    raise NotImplementedError()
+
+
+@type_inferrer(P.Jinv, nargs=1)
+async def infer_type_Jinv(track, x):
+    """Infer the return type of Jinv."""
+    raise NotImplementedError()
+
+
+@type_inferrer(P.pushenv, nargs=3)
+async def infer_type_pushenv(track, env, key, x):
+    """Infer the return type of pushenv."""
+    raise NotImplementedError()
+
+
+@type_inferrer(P.pullenv, nargs=2)
+async def infer_type_pullenv(track, env, key):
+    """Infer the return type of pullenv."""
+    raise NotImplementedError()

@@ -315,3 +315,27 @@ async def infer_value_tuple_len(track, xs):
     """Infer the return value of tuple_len."""
     xs_t = await xs['type']
     return limited(len(xs_t.elements), track.max_depth)
+
+
+@value_inferrer(P.J, nargs=1)
+async def infer_value_J(track, x):
+    """Infer the return value of J."""
+    raise NotImplementedError()
+
+
+@value_inferrer(P.Jinv, nargs=1)
+async def infer_value_Jinv(track, x):
+    """Infer the return value of Jinv."""
+    raise NotImplementedError()
+
+
+@value_inferrer(P.pushenv, nargs=3)
+async def infer_value_pushenv(track, env, key, x):
+    """Infer the return value of pushenv."""
+    raise NotImplementedError()
+
+
+@value_inferrer(P.pullenv, nargs=2)
+async def infer_value_pullenv(track, env, key):
+    """Infer the return value of pullenv."""
+    raise NotImplementedError()

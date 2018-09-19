@@ -365,3 +365,27 @@ async def infer_shape_list_reduce(track, fn, lst, dflt):
     shp1 = await fn_inf(dflt, elem)
     shp2 = await fn_inf(elem, elem)
     return find_matching_shape([shp1, shp2])
+
+
+@shape_inferrer(P.J, nargs=1)
+async def infer_shape_J(track, x):
+    """Infer the return shape of J."""
+    raise NotImplementedError()
+
+
+@shape_inferrer(P.Jinv, nargs=1)
+async def infer_shape_Jinv(track, x):
+    """Infer the return shape of Jinv."""
+    raise NotImplementedError()
+
+
+@shape_inferrer(P.pushenv, nargs=3)
+async def infer_shape_pushenv(track, env, key, x):
+    """Infer the return shape of pushenv."""
+    raise NotImplementedError()
+
+
+@shape_inferrer(P.pullenv, nargs=2)
+async def infer_shape_pullenv(track, env, key):
+    """Infer the return shape of pullenv."""
+    raise NotImplementedError()
