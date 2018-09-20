@@ -10,8 +10,9 @@ from . import dtype, parser, composite as C, operations
 from .cconv import closure_convert
 from .dtype import Tuple, List, Class, Array, Int, Float, Bool, \
     Number, tag_to_dataclass, ismyiatype, type_to_np_dtype, \
-    TypeMeta, Function
-from .infer import InferenceEngine, ANYTHING, Context
+    TypeMeta, Function, JTagged, NodeType, SensitivityMap
+from .infer import InferenceEngine, Inferrer, ANYTHING, \
+    Context, Contextless, CONTEXTLESS, reify
 from .ir import Graph, clone, GraphManager
 from .opt import PatternEquilibriumOptimizer, lib as optlib, CSE, \
     erase_class
@@ -242,7 +243,13 @@ standard_method_map = TypeMap({
         '__getitem__': P.array_getitem,
         '__setitem__': P.array_setitem,
         '__myia_iter__': C.array_iter,
-    }
+    },
+    dtype.JTagged: {
+    },
+    dtype.NodeType: {
+    },
+    dtype.SensitivityMap: {
+    },
 })
 
 
