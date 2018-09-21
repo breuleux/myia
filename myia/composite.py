@@ -6,7 +6,10 @@ from dataclasses import dataclass
 from .dtype import Array, Object, Int, UInt, Float, Number, Bool, Tuple, \
     List, Class
 from .hypermap import HyperMap
-from .ir import MultitypeGraph
+from .infer import Inferrer, GraphInferrer
+from .info import About
+from .ir import Graph, MetaGraph, MultitypeGraph, Constant
+from .prim import ops as P
 from .prim.py_implementations import \
     array_map, bool_not, hastype, distribute, shape, broadcast_shape, \
     switch, identity, bool_and, tail, typeof, scalar_cast, scalar_add, \
@@ -571,3 +574,62 @@ zeros_like = HyperMap(
     nonleaf=(Tuple, List, Class),
     fn_leaf=_leaf_zeros_like
 )
+
+
+class GradOperation(MetaGraph):
+    """Implements the grad(f) operation.
+
+    grad(f)(x, ...) returns df(x, ...)/dx. Derivatives of other inputs are
+    thrown out.
+
+    TODO: This currently will not work on primitives, but it is an easy fix.
+    We just need to know how many parameters f takes.
+    """
+
+    def __init__(self, name):
+        """Initialize a GradOperation."""
+        super().__init__(name)
+        self.cache = {}
+
+    def specialize_from_types(self, resources, types):
+        """Generate the graph."""
+        types = tuple(types)
+        if types in self.cache:
+            return self.cache[types]
+
+        ft, = types
+        assert isinstance(ft, GraphInferrer)
+        g = ft._graph
+        assert isinstance(g, Graph)
+
+        dfbuilder = Graph()
+        dfbuilder.debug.name = f"grad{len(g.parameters)}"
+
+        with About(g.debug, 'copy'):
+            fn = dfbuilder.add_parameter()
+
+        with About(g.debug, 'grad'):
+            df = Graph()
+
+        jf = dfbuilder.apply(P.J, fn)
+        params = []
+        for orig_p in g.parameters:
+            with About(orig_p.debug, 'grad'):
+                params.append(df.add_parameter())
+
+        jparams = [df.apply(P.J, p) for p in params]
+        app = df.apply(jf, *jparams)
+        bprop = df.apply(P.tuple_getitem, app, 1)
+        bapp = df.apply(bprop, 1)
+        dx = df.apply(P.tuple_getitem, bapp, 1)
+        df.output = dx
+
+        dfbuilder.output = Constant(df)
+        mng = resources.manager
+        mng.add_graph(dfbuilder)
+
+        self.cache[types] = dfbuilder
+        return dfbuilder
+
+
+grad = GradOperation('grad')
