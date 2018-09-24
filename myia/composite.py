@@ -13,7 +13,8 @@ from .prim import ops as P
 from .prim.py_implementations import \
     array_map, bool_not, hastype, distribute, shape, broadcast_shape, \
     switch, identity, bool_and, tail, typeof, scalar_cast, scalar_add, \
-    scalar_exp, scalar_log, scalar_sin, scalar_cos, scalar_tan, scalar_div
+    scalar_exp, scalar_log, scalar_sin, scalar_cos, scalar_tan, \
+    scalar_div, scalar_to_array
 
 
 def core(fn):
@@ -576,6 +577,15 @@ zeros_like = HyperMap(
 )
 
 
+@core
+def _cast_helper(x, model):
+    t = typeof(model)
+    if hastype(model, Array):
+        return scalar_to_array(scalar_cast(x, t.elements))
+    else:
+        return scalar_cast(x, t)
+
+
 class GradOperation(MetaGraph):
     """Implements the grad(f) operation.
 
@@ -619,8 +629,13 @@ class GradOperation(MetaGraph):
 
         jparams = [df.apply(P.J, p) for p in params]
         app = df.apply(jf, *jparams)
+        out = df.apply(P.Jinv, df.apply(P.tuple_getitem, app, 0))
         bprop = df.apply(P.tuple_getitem, app, 1)
-        bapp = df.apply(bprop, 1)
+
+        ch = resources.convert(_cast_helper)
+        bprop_arg = df.apply(ch, 1, out)
+
+        bapp = df.apply(bprop, bprop_arg)
         dx = df.apply(P.tuple_getitem, bapp, 1)
         df.output = dx
 
