@@ -22,7 +22,12 @@ short_relation_symbols = {
     'for_header': '⤾',
     'for_body': '⥁',
     'for_after': '↓',
-    'specialized': '+'
+    'specialized': '+',
+    'grad_fprop_app': '',
+    'grad_bprop_app': '▼',
+    'grad_fprop': '▶',
+    'grad_bprop': '◀',
+    'grad_sens': '∇',
 }
 
 
