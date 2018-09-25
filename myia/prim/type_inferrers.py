@@ -10,6 +10,7 @@ from ..dtype import Int, Float, Bool, Tuple, List, Array, UInt, Number, \
 from ..infer import ANYTHING, GraphInferrer, PartialInferrer, \
     MyiaTypeError, register_inferrer, Track, Inferrer, MetaGraphInferrer, \
     ExplicitInferrer, VOID, TransformedReference, MultiInferrer
+from ..infer.jinf import JInferrer
 from ..ir import Graph, MetaGraph
 from ..utils import Namespace, Var, RestrictedVar, is_dataclass_type
 
@@ -43,6 +44,11 @@ def _import_type(self, t: Function, track):
         [self(t2, track) for t2 in t.arguments],
         self(t.retval, track)
     )
+
+
+@type_cloner.variant
+def _stag_type(self, t: Inferrer):
+    return SensitivityMap
 
 
 class TypeTrack(Track):
@@ -107,6 +113,19 @@ class TypeTrack(Track):
         """Return a default type; this method raises an exception."""
         raise Exception('There is no default value for the type track.') \
             # pragma: no cover
+
+    def jtag(self, t):
+        """Return type for J(x) given typeof(x)."""
+        # It doesn't need to be recursive, because the only legal operation on
+        # JTagged is Jinv.
+        if isinstance(t, Inferrer):
+            return JInferrer(t, lambda elems: Tuple[elems])
+        else:
+            return JTagged[t]
+
+    def stag(self, t):
+        """Return type for sensitivity of x given typeof(x)."""
+        return _stag_type(t)
 
 
 ########################
@@ -524,13 +543,20 @@ async def infer_type_list_reduce(track, fn, lst, dflt):
 @type_inferrer(P.J, nargs=1)
 async def infer_type_J(track, x):
     """Infer the return type of J."""
-    raise NotImplementedError()
+    return track.jtag(await x.get_shallow('type'))
 
 
 @type_inferrer(P.Jinv, nargs=1)
 async def infer_type_Jinv(track, x):
     """Infer the return type of Jinv."""
-    raise NotImplementedError()
+    def isjinf(x):  # noqa: D400, D403
+        """JInferrer"""
+        return isinstance(x, JInferrer)
+    x_t = await track.check((JTagged, isjinf), x)
+    if isinstance(x_t, JInferrer):
+        return x_t.fn
+    else:
+        return x_t.subtype
 
 
 @type_inferrer(P.pushenv, nargs=3)

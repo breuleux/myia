@@ -320,13 +320,15 @@ async def infer_value_tuple_len(track, xs):
 @value_inferrer(P.J, nargs=1)
 async def infer_value_J(track, x):
     """Infer the return value of J."""
-    raise NotImplementedError()
+    # TODO: Wrap x['value']
+    return ANYTHING
 
 
 @value_inferrer(P.Jinv, nargs=1)
 async def infer_value_Jinv(track, x):
     """Infer the return value of Jinv."""
-    raise NotImplementedError()
+    # TODO: Unwrap x['value']
+    return ANYTHING
 
 
 @value_inferrer(P.pushenv, nargs=3)

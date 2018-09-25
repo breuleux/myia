@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from .dtype import Array, Object, Int, UInt, Float, Number, Bool, Tuple, \
     List, Class
 from .hypermap import HyperMap
-from .infer import Inferrer, GraphInferrer
+from .infer import GraphInferrer
 from .info import About
 from .ir import Graph, MetaGraph, MultitypeGraph, Constant
 from .prim import ops as P

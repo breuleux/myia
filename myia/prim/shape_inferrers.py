@@ -5,12 +5,13 @@ from dataclasses import is_dataclass
 from functools import partial, reduce
 
 from ..dshape import NOSHAPE, TupleShape, ListShape, ClassShape, \
-    find_matching_shape
+    find_matching_shape, shape_cloner
+from ..dtype import SensitivityMap
 from ..infer import ANYTHING, GraphInferrer, register_inferrer, \
     PartialInferrer, Track, MyiaShapeError, Inferrer,  MetaGraphInferrer, \
     InferenceError, MyiaTypeError, TransformedReference, MultiInferrer
+from ..infer.jinf import JInferrer
 from ..ir import Graph, MetaGraph
-
 from ..dtype import Array, Tuple, List, Class, TypeType, ismyiatype, \
     pytype_to_myiatype
 
@@ -41,6 +42,11 @@ class ScalarShapeInferrer(Inferrer):
     def provably_equivalent(self, other):
         """This is always equal to itself."""
         return type(self) == type(other)
+
+
+@shape_cloner.variant
+def _stag_shape(self, shp: Inferrer):
+    return SensitivityMap
 
 
 class ShapeTrack(Track):
@@ -101,6 +107,17 @@ class ShapeTrack(Track):
                          for n in v.__dataclass_fields__.keys()))
         else:
             return getattr(v, 'shape', NOSHAPE)
+
+    def jtag(self, shp):
+        """Return type for J(x) given shape(x)."""
+        if isinstance(shp, Inferrer):
+            return JInferrer(shp, TupleShape)
+        else:
+            return shp
+
+    def stag(self, t):
+        """Return type for sensitivity of x given shape(x)."""
+        return _stag_shape(t)
 
 
 shape_inferrer = partial(register_inferrer,
@@ -370,13 +387,17 @@ async def infer_shape_list_reduce(track, fn, lst, dflt):
 @shape_inferrer(P.J, nargs=1)
 async def infer_shape_J(track, x):
     """Infer the return shape of J."""
-    raise NotImplementedError()
+    return track.jtag(await x.get_shallow('shape'))
 
 
 @shape_inferrer(P.Jinv, nargs=1)
 async def infer_shape_Jinv(track, x):
     """Infer the return shape of Jinv."""
-    raise NotImplementedError()
+    shp = await x.get_shallow('shape')
+    if isinstance(shp, JInferrer):
+        return shp.fn
+    else:
+        return shp
 
 
 @shape_inferrer(P.pushenv, nargs=3)
