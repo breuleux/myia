@@ -601,6 +601,30 @@ class GradOperation(MetaGraph):
         super().__init__(name)
         self.cache = {}
 
+    def make_gf(self, jf, orig_params, dbg=None):
+        """Make the graph for the grad."""
+        if dbg:
+            with About(dbg, 'grad'):
+                df = Graph()
+        else:
+            df = Graph()
+
+        params = []
+        for orig_p in orig_params:
+            with About(orig_p.debug, 'grad'):
+                params.append(df.add_parameter())
+
+        jparams = [df.apply(P.J, p) for p in params]
+        app = df.apply(jf, *jparams)
+        out = df.apply(P.Jinv, df.apply(P.tuple_getitem, app, 0))
+        bprop = df.apply(P.tuple_getitem, app, 1)
+        bprop_arg = df.apply(_cast_helper, 1, out)
+
+        bapp = df.apply(bprop, bprop_arg)
+        dx = df.apply(P.tuple_getitem, bapp, 1)
+        df.output = dx
+        return df
+
     def specialize_from_types(self, resources, types):
         """Generate the graph."""
         types = tuple(types)
@@ -618,26 +642,10 @@ class GradOperation(MetaGraph):
         with About(g.debug, 'copy'):
             fn = dfbuilder.add_parameter()
 
-        with About(g.debug, 'grad'):
-            df = Graph()
+        with About(g.debug, 'grad_fprop'):
+            jf = dfbuilder.apply(P.J, fn)
 
-        jf = dfbuilder.apply(P.J, fn)
-        params = []
-        for orig_p in g.parameters:
-            with About(orig_p.debug, 'grad'):
-                params.append(df.add_parameter())
-
-        jparams = [df.apply(P.J, p) for p in params]
-        app = df.apply(jf, *jparams)
-        out = df.apply(P.Jinv, df.apply(P.tuple_getitem, app, 0))
-        bprop = df.apply(P.tuple_getitem, app, 1)
-
-        ch = resources.convert(_cast_helper)
-        bprop_arg = df.apply(ch, 1, out)
-
-        bapp = df.apply(bprop, bprop_arg)
-        dx = df.apply(P.tuple_getitem, bapp, 1)
-        df.output = dx
+        df = self.make_gf(jf, g.parameters, g.debug)
 
         dfbuilder.output = Constant(df)
         mng = resources.manager
