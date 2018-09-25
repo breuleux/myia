@@ -483,8 +483,16 @@ def type_cloner(self, t: Function, *args):
 
 
 @overload  # noqa: F811
+def type_cloner(self, t: JTagged, *args):
+    return JTagged[self(t.subtype, *args)]
+
+
+@overload  # noqa: F811
 def type_cloner(self, t: TypeMeta, *args):
-    return self[t](t, *args)
+    if t.is_generic():
+        return t
+    else:
+        return self[t](t, *args)
 
 
 @overload(bootstrap=True)
@@ -527,6 +535,11 @@ async def type_cloner_async(self, t: Function, *args):
         [await self(t2, *args) for t2 in t.arguments],
         await self(t.retval, *args)
     ]
+
+
+@overload  # noqa: F811
+async def type_cloner_async(self, t: JTagged, *args):
+    return JTagged[await self(t.subtype, *args)]
 
 
 @overload  # noqa: F811
