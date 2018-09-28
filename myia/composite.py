@@ -673,8 +673,6 @@ class GradOperation(MetaGraph):
         df = self.make_gf(jf, g.parameters, g.debug)
 
         dfbuilder.output = Constant(df)
-        mng = resources.manager
-        mng.add_graph(dfbuilder)
 
         self.cache[types] = dfbuilder
         return dfbuilder
