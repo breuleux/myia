@@ -341,3 +341,9 @@ async def infer_value_pushenv(track, env, key, x):
 async def infer_value_pullenv(track, env, key):
     """Infer the return value of pullenv."""
     raise NotImplementedError()
+
+
+@value_inferrer(P.mergeenv, nargs=2)
+async def infer_value_mergeenv(track, env1, env2):
+    """Infer the return value of mergeenv."""
+    raise NotImplementedError()

@@ -562,10 +562,25 @@ async def infer_type_Jinv(track, x):
 @type_inferrer(P.pushenv, nargs=3)
 async def infer_type_pushenv(track, env, key, x):
     """Infer the return type of pushenv."""
-    raise NotImplementedError()
+    await track.check(SensitivityMap, env)
+    await track.check(NodeType, key)
+    return SensitivityMap
 
 
 @type_inferrer(P.pullenv, nargs=2)
 async def infer_type_pullenv(track, env, key):
     """Infer the return type of pullenv."""
-    raise NotImplementedError()
+    await track.check(SensitivityMap, env)
+    await track.check(NodeType, key)
+    node = await key['value']
+    if node is ANYTHING:
+        raise InferenceError('Argument to pullenv must be known.')
+    ref = track.engine.ref(node, key.context)
+    return List[await ref.get_raw('type')]
+
+
+@type_inferrer(P.mergeenv, nargs=2)
+async def infer_type_mergeenv(track, env1, env2):
+    """Infer the return type of mergeenv."""
+    await track.check(SensitivityMap, env1, env2)
+    return SensitivityMap

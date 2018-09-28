@@ -9,7 +9,7 @@ from myia.api import scalar_pipeline, standard_pipeline
 from myia.composite import hyper_add, zeros_like
 from myia.debug.traceback import print_inference_error
 from myia.dtype import Array as A, Int, Float, TypeType, External, \
-    Number, Class, Problem
+    Number, Class, Problem, SensitivityMap as SM
 from myia.hypermap import HyperMap
 from myia.infer import ANYTHING, VOID, InferenceError, register_inferrer, \
     Contextless, CONTEXTLESS
@@ -1883,6 +1883,7 @@ def test_hyper_map_nobroadcast(x, y):
         (T[i64, f64], T[i64, f64], T[i64, f64]),
         (Point_t, Point_t, Point_t),
         (ai64_of(2, 5), ai64_of(2, 5), ai64),
+        (SM, SM, SM),
     ],
     value=[
         (1, 2, 3),

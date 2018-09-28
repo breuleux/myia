@@ -2,6 +2,7 @@
 
 
 import numpy
+from collections import defaultdict
 from types import FunctionType
 from typing import Tuple as TupleT, Dict as DictT, Any
 from .utils import Named, is_dataclass_type, as_frozen, overload
@@ -288,6 +289,31 @@ class SensitivityMap(Object):
     a function or closure. Different closures will get and set different
     keys in this map, but the type itself is the same.
     """
+
+    def __init__(self, _contents={}):
+        """Initialize a SensitivityMap."""
+        self._contents = defaultdict(lambda: [])
+        for k, v in _contents.items():
+            self._contents[k] += v
+
+    def pull(self, key):
+        """Get the sensitivity list for the given key."""
+        return self._contents[key]
+
+    def push(self, key, value):
+        """Push a sensitivity for the given key."""
+        rval = SensitivityMap(self._contents)
+        rval._contents[key].append(value)
+        return rval
+
+    def merge(self, other):
+        rval = SensitivityMap(self._contents)
+        for k, v in other._contents.items():
+            rval._contents[k] += v
+        return rval
+
+
+newenv = SensitivityMap()
 
 
 class TypeType(Type):

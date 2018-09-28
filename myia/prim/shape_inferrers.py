@@ -403,10 +403,18 @@ async def infer_shape_Jinv(track, x):
 @shape_inferrer(P.pushenv, nargs=3)
 async def infer_shape_pushenv(track, env, key, x):
     """Infer the return shape of pushenv."""
-    raise NotImplementedError()
+    return SensitivityMap
 
 
 @shape_inferrer(P.pullenv, nargs=2)
 async def infer_shape_pullenv(track, env, key):
     """Infer the return shape of pullenv."""
-    raise NotImplementedError()
+    node = await key['value']
+    ref = track.engine.ref(node, key.context)
+    return ListShape(await ref.get_raw('shape'))
+
+
+@shape_inferrer(P.mergeenv, nargs=2)
+async def infer_shape_mergeenv(track, env1, env2):
+    """Infer the return shape of mergeenv."""
+    return SensitivityMap

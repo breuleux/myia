@@ -602,10 +602,16 @@ def Jinv(x):
 @register(primops.pushenv)
 def pushenv(env, key, x):
     """Implement `pushenv`."""
-    raise NotImplementedError()
+    return env.push(key, x)
 
 
 @register(primops.pullenv)
 def pullenv(env, key):
     """Implement `pullenv`."""
-    raise NotImplementedError()
+    return env.pull(key)
+
+
+@register(primops.mergeenv)
+def mergeenv(env1, env2):
+    """Implement `mergeenv`."""
+    return env1.merge(env2)
