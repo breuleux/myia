@@ -42,7 +42,7 @@ def bprop_to_augm(prim, fn):
 
     with About(info, 'grad_fprop'):
         outer = Graph()
-        # outer.transforms['primal'] = prim
+        outer.transforms['primal'] = prim
         outer.output = Constant(None)
 
     mng = manage(bprop, outer)
@@ -83,8 +83,8 @@ register = augmented_graphs.register
 def register_bprop(prim):
     """Register an augmented function for prim, given a backpropagator."""
     def deco(fn):
-        fn2 = bprop_to_augm(prim, fn)
-        return register(prim)(fn2)
+        g = bprop_to_augm(prim, fn)
+        return register(prim)(g)
     return deco
 
 
@@ -93,13 +93,13 @@ def register_augm(prim):
     from ..debug.label import short_labeler, short_relation_symbols as syms
 
     def deco(fn):
-        fn2 = parse(fn)
-        for g in manage(fn2, weak=True).graphs:
-            name = short_labeler.name(g)
+        g = parse(fn)
+        for g2 in manage(g, weak=True).graphs:
+            name = short_labeler.name(g2)
             name = name.replace('__fprop__', syms['grad_fprop'])
-            g.debug.name = name.replace('__bprop__', syms['grad_bprop'])
-        # fn2.transforms['primal'] = prim
-        return register(prim)(fn2)
+            g2.debug.name = name.replace('__bprop__', syms['grad_bprop'])
+        g.transforms['primal'] = prim
+        return register(prim)(g)
     return deco
 
 
@@ -226,6 +226,7 @@ class MakeTupleGradient:
         b.output = g.apply(primops.make_tuple, newenv, *grads)
 
         g.output = g.apply(primops.make_tuple, out, b)
+        g.transforms['primal'] = primops.make_tuple
 
         return g
 

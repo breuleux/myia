@@ -5,6 +5,7 @@ from ..prim import ops as P
 from ..debug.label import short_relation_symbols as syms
 
 from .graph_infer import Inferrer, ExplicitInferrer, TransformedReference
+from .core import reify, reify_shallow
 
 
 class JInferrer(Inferrer):
@@ -27,12 +28,12 @@ class JInferrer(Inferrer):
         args = [TransformedReference(self.engine, P.Jinv, jarg)
                 for jarg in jargs]
         res = await self.fn(*args)
-        res_t = self.track.jtag(res)
+        res_t = self.track.jtag(await reify_shallow(res))
         bparams_t = [SensitivityMap]
         bparams_t += [self.track.stag(await x[self.track.name]) for x in args]
         bprop_t = ExplicitInferrer(
             self.track,
-            [self.track.stag(res)],
+            [self.track.stag(await reify(res))],
             self.mktuple(bparams_t),
             name=f'{syms["grad_bprop"]}{self.fn.identifier}'
         )
