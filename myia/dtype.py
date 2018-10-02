@@ -290,6 +290,8 @@ class SensitivityMap(Object):
     keys in this map, but the type itself is the same.
     """
 
+
+class SensitivityMapInstance:
     def __init__(self, _contents={}):
         """Initialize a SensitivityMap."""
         self._contents = defaultdict(lambda: [])
@@ -313,7 +315,7 @@ class SensitivityMap(Object):
         return rval
 
 
-newenv = SensitivityMap()
+newenv = SensitivityMapInstance()
 
 
 class TypeType(Type):
@@ -428,6 +430,9 @@ def pytype_to_myiatype(pytype, instance=None):
             return Array
         else:
             return Array[DTYPE_MAP[instance.dtype.name]]
+
+    elif pytype is SensitivityMapInstance:
+        return SensitivityMap
 
     elif is_dataclass_type(pytype):
         if pytype in dataclass_to_myiaclass:
