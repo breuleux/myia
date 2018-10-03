@@ -17,7 +17,8 @@ from ..utils import Registry
 from . import ops as primops
 from .ops import Primitive
 from .py_implementations import \
-    Jinv, J
+    Jinv, J, \
+    scalar_mul, scalar_div, scalar_sub, scalar_usub, scalar_log, scalar_pow
 
 
 parse = standard_pipeline \
@@ -112,26 +113,27 @@ def bprop_scalar_add(x, y, out, dout):
 @register_bprop(primops.scalar_sub)
 def bprop_scalar_sub(x, y, out, dout):
     """Backpropagator for primitive `scalar_sub`."""
-    return (dout, -dout)
+    return (dout, scalar_usub(dout))
 
 
 @register_bprop(primops.scalar_mul)
 def bprop_scalar_mul(x, y, out, dout):
     """Backpropagator for primitive `scalar_mul`."""
-    return (dout * y, dout * x)
+    return (scalar_mul(dout, y), scalar_mul(dout, x))
 
 
 @register_bprop(primops.scalar_div)
 def bprop_scalar_div(x, y, out, dout):
     """Backpropagator for primitive `scalar_div`."""
-    return (dout / y, -dout * out / y)
+    return (scalar_div(dout, y),
+            scalar_mul(scalar_usub(dout), scalar_div(out, y)))
 
 
 @register_bprop(primops.scalar_pow)
 def bprop_scalar_pow(x, y, out, dout):
     """Backpropagator for primitive `scalar_pow`."""
-    return (dout * (y * x ** (y - 1)),
-            dout * log(x) * out)
+    return (scalar_mul(dout, scalar_mul(y, scalar_pow(x, scalar_sub(y, 1)))),
+            scalar_mul(dout, scalar_mul(scalar_log(x), out)))
 
 
 @register_bprop(primops.scalar_uadd)
@@ -143,7 +145,7 @@ def bprop_scalar_uadd(x, out, dout):
 @register_bprop(primops.scalar_usub)
 def bprop_scalar_usub(x, out, dout):
     """Backpropagator for primitive `scalar_usub`."""
-    return (-dout,)
+    return (scalar_usub(dout),)
 
 
 @register_bprop(primops.scalar_gt)
