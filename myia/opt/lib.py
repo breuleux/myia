@@ -1,7 +1,8 @@
 """Library of optimizations."""
 
 from ..graph_utils import dfs
-from ..ir import succ_incoming, freevars_boundary, Constant, GraphCloner, Graph
+from ..ir import succ_incoming, freevars_boundary, Graph, Constant, \
+    GraphCloner, clone
 from ..prim import Primitive, ops as P
 from ..utils import Namespace
 from ..utils.unify import Var, var, SVar
@@ -345,3 +346,35 @@ def drop_into_if(optimizer, node, equiv):
 
     new = ((P.switch, equiv[X], y2, z2),)
     return sexp_to_node(new, node.graph)
+
+
+#################
+# Gradient opts #
+#################
+
+
+elim_j_jinv = psub(
+    pattern=(P.J, (P.Jinv, X)),
+    replacement=X,
+    name='elim_j_jinv'
+)
+
+
+elim_jinv_j = psub(
+    pattern=(P.Jinv, (P.J, X)),
+    replacement=X,
+    name='elim_jinv_j'
+)
+
+
+@pattern_replacer(P.J, C)
+def expand_J(optimizer, node, equiv):
+    from ..grad import J
+    arg = equiv[C]
+    newg = J(arg.value, optimizer.resources)
+
+    pip = optimizer.pipeline.defn.select('resolve')
+    newg2 = pip.run(
+        graph=newg,
+    )['graph']
+    return Constant(clone(newg2))
