@@ -1,6 +1,7 @@
 """Utilities to generate or map labels for nodes and graphs."""
 
 
+from ..dtype import SensitivityMapInstance
 from ..info import DebugInfo
 from ..ir.anf import ANFNode, Graph
 from ..prim import Primitive
@@ -111,6 +112,11 @@ class NodeLabeler:
                 return v.name
             elif isinstance(v, CosmeticPrimitive):
                 return v.label
+            elif isinstance(v, SensitivityMapInstance):
+                if len(v):
+                    return 'SensitivityMap(...)'
+                else:
+                    return "∅"
             else:
                 class_name = v.__class__.__name__
                 s = str(v)

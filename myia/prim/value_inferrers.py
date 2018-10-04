@@ -34,7 +34,10 @@ class LimitedValue(ValueWrapper):
     @classmethod
     def min_count(cls, lvs):
         """Return the minimum count of all LimitedValues."""
-        return min(lv.count for lv in lvs)
+        if lvs:
+            return min(lv.count for lv in lvs)
+        else:
+            return 1
 
     def __init__(self, value, count):
         """Initialize a LimitedValue."""

@@ -181,7 +181,7 @@ class GradTester:
         """
         results: Dict[str, float] = {}
         z = zeros_like(self.out)
-        for (out_sen,), opath in gen_variants(z, lambda x: [1], ()):
+        for (out_sen,), opath in gen_variants(z, lambda x: [1.0], ()):
             grads = self.gfn(*self.args, self.unwrap(out_sen))
             for ipath in gen_paths(grads, ()):
                 if isinstance(resolve_path(self.args, ipath), NoTestGrad):

@@ -507,6 +507,10 @@ class ExplicitInferrer(Inferrer):
             )
         return self.retval
 
+    async def as_function_type(self, argrefs=None):
+        """Return a Function type corresponding to this Inferrer."""
+        return Function[self.argvals, self.retval]
+
 
 def register_inferrer(*prims, nargs, constructors):
     """Define a PrimitiveInferrer for prims with nargs arguments.
@@ -705,7 +709,10 @@ class TransformedReference(AbstractReference):
         """Get the raw value for the track, which might be wrapped."""
         track = self.engine.tracks[track_name]
         inf = unwrap(track.from_value(self.fn, None))
-        return await inf(*self.refs)
+        if inf is ANYTHING:
+            return ANYTHING
+        else:
+            return await inf(*self.refs)
 
     async def __getitem__(self, track_name):
         """Get the value for the track (asynchronous)."""
