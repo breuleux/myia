@@ -2,9 +2,9 @@
 
 from ..graph_utils import dfs
 from ..ir import succ_incoming, freevars_boundary, Graph, Constant, \
-    GraphCloner, clone
+    GraphCloner, clone, MetaGraph
 from ..prim import Primitive, ops as P
-from ..utils import Namespace
+from ..utils import Namespace, UNKNOWN
 from ..utils.unify import Var, var, SVar
 
 from .opt import \
@@ -35,11 +35,16 @@ def _is_cg(n):
     return n.is_constant_graph()
 
 
+def _is_mg(n):
+    return n.is_constant(MetaGraph)
+
+
 C = var(_is_c)
 C1 = var(_is_c)
 C2 = var(_is_c)
 CNS = var(lambda x: x.is_constant(Namespace))
 G = var(_is_cg)
+MG = var(_is_mg)
 NIL = var(lambda x: x.is_constant() and x.value == ())
 
 Xs = SVar(Var())
@@ -369,12 +374,22 @@ elim_jinv_j = psub(
 
 @pattern_replacer(P.J, C)
 def expand_J(optimizer, node, equiv):
-    from ..grad import J
-    arg = equiv[C]
-    newg = J(arg.value, optimizer.resources)
+    from ..grad import J as Jimpl
+    arg = equiv[C].value
+    try:
+        newg = Jimpl(arg, optimizer.resources)
+    except NotImplementedError:
+        return None
+    return Constant(clone(newg))
 
-    pip = optimizer.pipeline.defn.select('resolve')
-    newg2 = pip.run(
-        graph=newg,
-    )['graph']
-    return Constant(clone(newg2))
+
+@pattern_replacer(MG, Xs)
+def expand_metagraph(optimizer, node, equiv):
+    mg = equiv[MG].value
+    xs = equiv[Xs]
+    types = [x.type for x in xs]
+    if any(t is UNKNOWN for t in types):
+        return node
+    g = mg.specialize_from_types(types)
+    sexp = (g, *xs)
+    return sexp_to_node(sexp, node.graph)

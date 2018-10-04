@@ -830,6 +830,8 @@ step_opt = Optimizer.partial(
             optlib.multiply_by_one_r,
             optlib.multiply_by_zero_l,
             optlib.multiply_by_zero_r,
+            optlib.expand_metagraph,
+            optlib.resolve_globals,
         ],
         cse=CSE.partial(report_changes=False),
         renormalize='renormalize'
