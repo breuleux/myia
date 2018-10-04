@@ -1,12 +1,15 @@
 
 import pytest
 import numpy as np
+from types import FunctionType
 
 from myia.api import standard_debug_pipeline
 from myia.composite import grad
 from myia.debug.finite_diff import gen_variants, GradTester
 from myia.dtype import JTagged as JT, SensitivityMap as SM
+from myia.grad import J as realJ
 from myia.infer import InferenceError
+from myia.pipeline import pipeline_function
 from myia.prim import ops as P
 from myia.prim.py_implementations import scalar_cast, J, Jinv, \
     array_reduce, scalar_add, typeof
@@ -166,23 +169,75 @@ prim_tests = {
 }
 
 
-@pytest.mark.parametrize('prim,cases', prim_tests.items())
-def test_prim_grads(prim, cases):
-    primg = augmented_graphs[prim]
-    g = grad.make_gf(primg, primg.parameters,
-                     dbg=primg.debug, sens_param=True, get_all=True)
-    pip = standard_debug_pipeline \
-        .select('resolve', 'infer', 'specialize', 'opt', 'export') \
-        .make()
-    types = [{'type': typeof(arg)} for arg in cases[0]]
-    res = pip(graph=g, argspec=[*types, types[0]])
+@pipeline_function
+def grad_wrap(self, graph):
+    jg = realJ(graph, self.resources)
+    g = grad.make_gf(jg, jg.parameters,
+                     dbg=jg.debug, sens_param=True, get_all=True)
+    # buche(g)
+    return g
+
+
+def _grad_test(fn, obj, args, sens_type=f64):
+    in_types = [{'type': typeof(arg)} for arg in args]
+    sens_type = {'type': sens_type}
+    steps = ['resolve', 'infer', 'specialize', 'prepare',
+             'opt', 'validate', 'export']
+    if isinstance(obj, FunctionType):
+        res = standard_debug_pipeline \
+            .select('parse', *steps).insert_before('infer', wrap=grad_wrap) \
+            .run(input=obj, argspec=[*in_types, sens_type])
+    else:
+        res = standard_debug_pipeline \
+            .select(*steps).insert_before(wrap=grad_wrap) \
+            .run(graph=obj, argspec=[*in_types, sens_type])
 
     gtest = GradTester(
-        fn=pyi[prim],
+        fn=fn,
         gfn=res['output'],
-        args=cases[0],
-        argnames=[None]*len(cases[0]),
+        args=args,
+        argnames=[f'in{i}' for i in range(len(args))],
         outnames=None
     )
-
     gtest.assert_match()
+
+
+@pytest.mark.parametrize('prim,cases', prim_tests.items())
+def test_prim_grads(prim, cases):
+    for case in cases:
+        _grad_test(pyi[prim], prim, case)
+
+
+def grad_test(*tests):
+    """Decorate a function to parse and run it against pure Python.
+
+    Returns a unit test that will parse the function, and then for
+    each `inputs` tuple in `tests` it will check that the pure Python,
+    undecorated function returns that same output.
+
+    Arguments:
+        tests: One or more inputs tuple.
+
+    """
+
+    def decorate(fn):
+        def test(args):
+            if not isinstance(args, tuple):
+                args = (args,)
+
+            _grad_test(fn, fn, args)
+
+        m = pytest.mark.parametrize('args', list(tests))(test)
+        m.__orig__ = fn
+        return m
+    return decorate
+
+
+@grad_test((1.0, 4.0), (5.0, -13.0))
+def test_grad_add(x, y):
+    return x + y
+
+
+@grad_test((3.0, 4.0))
+def test_grad_expr(x, y):
+    return x**3.0 * y**4.0
