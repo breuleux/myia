@@ -710,6 +710,9 @@ class VirtualReference(AbstractReference):
     async def __getitem__(self, track):
         return self.values[track]
 
+    async def get_shallow(self, track):
+        return self.values[track]
+
     def __eq__(self, other):
         return isinstance(other, VirtualReference) \
             and self.values == other.values
