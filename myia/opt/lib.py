@@ -116,6 +116,19 @@ def bubble_op_tuple_binary(optimizer, node, equiv):
     return sexp_to_node((P.make_tuple, *elems), node.graph)
 
 
+# f((a, b, ...)) => (f(a), f(b), ...)
+# For f in the following list:
+_BubbleUnary = primset_var(P.J, P.Jinv)
+
+
+@pattern_replacer(_BubbleUnary, (P.make_tuple, Xs))
+def bubble_op_tuple_unary(optimizer, node, equiv):
+    xs = equiv[Xs]
+    op = equiv[_BubbleUnary]
+    elems = [(op, x) for x in xs]
+    return sexp_to_node((P.make_tuple, *elems), node.graph)
+
+
 ##############################
 # Arithmetic simplifications #
 ##############################
