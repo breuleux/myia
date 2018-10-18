@@ -324,14 +324,18 @@ async def infer_value_tuple_len(track, xs):
 async def infer_value_J(track, x):
     """Infer the return value of J."""
     # TODO: Wrap x['value']
-    return ANYTHING
+    t = await x['type']
+    if isinstance(t, Inferrer):
+        return ANYTHING
+    else:
+        return await x.get_raw('value')
 
 
 @value_inferrer(P.Jinv, nargs=1)
 async def infer_value_Jinv(track, x):
     """Infer the return value of Jinv."""
     # TODO: Unwrap x['value']
-    return ANYTHING
+    return await x.get_raw('value')
 
 
 @value_inferrer(P.pushenv, nargs=3)

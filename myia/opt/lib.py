@@ -395,7 +395,7 @@ def expand_J(optimizer, node, equiv):
         newg = Jimpl(arg, optimizer.resources)
     except NotImplementedError:
         return None
-    return Constant(clone(newg))
+    return Constant(newg)
 
 
 @pattern_replacer(MG, Xs)

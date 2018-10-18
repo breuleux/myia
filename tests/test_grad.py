@@ -3,12 +3,13 @@ import pytest
 import numpy as np
 from types import FunctionType
 
-from myia.api import standard_debug_pipeline
+from myia.api import standard_debug_pipeline, Optimizer
 from myia.composite import grad
 from myia.debug.finite_diff import gen_variants, GradTester
 from myia.dtype import JTagged as JT, SensitivityMap as SM
 from myia.grad import J as realJ
 from myia.infer import InferenceError
+from myia.opt import lib as optlib, CSE
 from myia.pipeline import pipeline_function
 from myia.prim import ops as P
 from myia.prim.py_implementations import scalar_cast, J, Jinv, \
@@ -20,6 +21,33 @@ from .common import B, T, L, F, i16, i32, i64, u64, f16, f32, f64, \
     li32, li64, lf64, ai16, ai32, ai64, af16, af32, af64, Nil, \
     Point, Point_t, Point3D, Point3D_t, Thing_f, Thing_ftup, mysum
 from .test_infer import infer, infer_std, af16_of, af32_of
+
+
+step_optgrad = Optimizer.partial(
+    phases=dict(
+        main=[
+            optlib.simplify_always_true,
+            optlib.simplify_always_false,
+            optlib.inline_core,
+            optlib.simplify_partial,
+            optlib.replace_applicator,
+            optlib.bubble_op_tuple_unary,
+            optlib.elim_identity,
+        ],
+        grad=[
+            optlib.expand_J,
+        ],
+        renormalize='renormalize',
+        elimj=[
+            optlib.elim_j,
+            optlib.elim_jinv,
+            optlib.elim_jct,
+            optlib.elim_j_jinv,
+            optlib.elim_jinv_j,
+        ],
+        cse=CSE.partial(report_changes=False),
+    )
+)
 
 
 @infer_std(
@@ -182,14 +210,18 @@ def _grad_test(fn, obj, args, sens_type=f64):
     in_types = [{'type': typeof(arg)} for arg in args]
     sens_type = {'type': sens_type}
     steps = ['resolve', 'infer', 'specialize', 'prepare',
-             'opt', 'validate', 'export']
+             'validate', 'export']
     if isinstance(obj, FunctionType):
         res = standard_debug_pipeline \
-            .select('parse', *steps).insert_before('infer', wrap=grad_wrap) \
+            .select('parse', *steps) \
+            .insert_before('infer', wrap=grad_wrap) \
+            .insert_after('prepare', opt=step_optgrad) \
             .run(input=obj, argspec=[*in_types, sens_type])
     else:
         res = standard_debug_pipeline \
-            .select(*steps).insert_before(wrap=grad_wrap) \
+            .select(*steps) \
+            .insert_before(wrap=grad_wrap) \
+            .insert_after('prepare', opt=step_optgrad) \
             .run(graph=obj, argspec=[*in_types, sens_type])
 
     gtest = GradTester(
@@ -233,6 +265,12 @@ def grad_test(*tests):
     return decorate
 
 
+@grad_test((13.0, 14.0))
+def test_null(x, y):
+    """Test null gradient."""
+    return 10.0 + 28.0 / 43.0
+
+
 @grad_test((1.0, 4.0), (5.0, -13.0))
 def test_grad_add(x, y):
     return x + y
@@ -241,3 +279,32 @@ def test_grad_add(x, y):
 @grad_test((3.0, 4.0))
 def test_grad_expr(x, y):
     return x**3.0 * y**4.0
+
+
+@grad_test((3.0,))
+def test_constant(x):
+    """Test the use of a literal in the expression."""
+    return 18.0 * x
+
+
+@grad_test((3.0,))
+def test_dup_args_in_call(x):
+    """The naive gradient update rule fails when a function's arguments
+    contain the same variable more than once."""
+    return x * x
+
+
+@grad_test((3.0,))
+def test_quadruple_args_in_call(x):
+    """Test that duplicated arguments still cause no problem even if
+    there are four of them."""
+    def g(a, b, c, d):
+        return a * b * c * d
+    return g(x, x, x, x)
+
+
+@grad_test((3.0, 5.0))
+def test_tuples(x, y):
+    tup = x + y, x * y
+    z = tup[0] + tup[1]
+    return z

@@ -286,10 +286,10 @@ class SensRemapper(GraphRemapper):
             sexp = (zeros_like,
                     (primops.Jinv,
                      self.remappers['grad_fprop'].get(g, node)))
-        elif n == 1:
-            sexp = contribs[0]
         else:
-            sexp = (hyper_add, *contribs)
+            def mkadd(x, y):
+                return (hyper_add, x, y)
+            sexp = reduce(mkadd, contribs)
 
         new_node.inputs = sexp_to_node(sexp, ng).inputs
 
@@ -352,7 +352,11 @@ class Grad:
 
 @overload
 def J(prim: Primitive, resources):
-    return clone(augmented_graphs[prim])
+    g = augmented_graphs[prim]
+    if isinstance(g, Graph):
+        return clone(g)
+    else:
+        return g
 
 
 @overload

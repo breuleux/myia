@@ -11,14 +11,15 @@ from ..api import standard_pipeline
 from ..composite import zeros_like
 from ..dtype import newenv
 from ..info import NamedDebugInfo, About
-from ..ir import Constant, Graph, manage, clone
+from ..ir import Constant, Graph, manage, clone, MetaGraph
 from ..utils import Registry
 
 from . import ops as primops
 from .ops import Primitive
 from .py_implementations import \
     Jinv, J, \
-    scalar_mul, scalar_div, scalar_sub, scalar_usub, scalar_log, scalar_pow
+    scalar_mul, scalar_div, scalar_sub, scalar_usub, scalar_log, scalar_pow, \
+    tuple_setitem
 
 
 parse = standard_pipeline \
@@ -31,6 +32,7 @@ def bprop_to_augm(prim, fn):
     info = NamedDebugInfo(prim=prim, name=prim.name)
 
     bprop = parse(fn)
+    bprop.flags['flatten_inference'] = True
     bprop.debug.name = None
     bprop.debug.about = About(info, 'grad_bprop')  # type: ignore
     bprop.output = bprop.apply(
@@ -43,6 +45,7 @@ def bprop_to_augm(prim, fn):
 
     with About(info, 'grad_fprop'):
         outer = Graph()
+        outer.flags['flatten_inference'] = True
         outer.transforms['primal'] = prim
         outer.output = Constant(None)
 
@@ -191,29 +194,25 @@ def bprop_Jinv(x, out, dout):
     return (J(dout),)
 
 
-# @register_augm(primops.if_)
-# def __fprop__if_(c, tb, fb):
-#     """Backpropagator for primitive `if`."""
-#     if Jinv(c):
-#         res = tb()
-#     else:
-#         res = fb()
-
-#     rval, branch_bprop = res
-
-#     def __bprop__if_(dout):
-#         zc = zeros_like(c)
-#         value = branch_bprop(dout)[0]
-#         if Jinv(c):
-#             return (), zc, value, zeros_like(Jinv(fb))
-#         else:
-#             return (), zc, zeros_like(Jinv(tb)), value
-
-#     return rval, __bprop__if_
+@register_bprop(primops.switch)
+def bprop_switch(cond, tb, fb, out, dout):
+    """Backpropagator for primitive `switch`."""
+    return (zeros_like(cond),
+            switch(cond, dout, zeros_like(fb)),
+            switch(cond, zeros_like(tb), dout))
 
 
-class MakeTupleGradient:
+class MakeTupleGradient(MetaGraph):
+    def __init__(self, name):
+        """Initialize a GradOperation."""
+        super().__init__(name)
+        self.cache = {}
+
     def specialize_from_types(self, types):
+        types = tuple(types)
+        if types in self.cache:
+            return self.cache[types]
+
         g = Graph()
 
         params = [g.add_parameter() for t in types]
@@ -223,14 +222,18 @@ class MakeTupleGradient:
 
         b = Graph()
         dout = b.add_parameter()
-        grads = [g.apply(primops.tuple_getitem, dout, i)
+        grads = [b.apply(primops.tuple_getitem, dout, i)
                  for i, p in enumerate(params)]
-        b.output = g.apply(primops.make_tuple, newenv, *grads)
+        b.output = b.apply(primops.make_tuple, newenv, *grads)
 
         g.output = g.apply(primops.make_tuple, out, b)
         g.transforms['primal'] = primops.make_tuple
 
+        b.flags['flatten_inference'] = True
+        g.flags['flatten_inference'] = True
+
+        self.cache[types] = g
         return g
 
 
-register(primops.make_tuple)(MakeTupleGradient())
+register(primops.make_tuple)(MakeTupleGradient(name='make_tuple_gradient'))
