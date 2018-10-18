@@ -4,9 +4,9 @@
 from dataclasses import dataclass
 
 from .dtype import Array, Object, Int, UInt, Float, Number, Bool, Tuple, \
-    List, Class, SensitivityMap
+    List, Class, SensitivityMap, newenv
 from .hypermap import HyperMap
-from .infer import GraphInferrer
+from .infer import Inferrer, GraphInferrer
 from .info import About
 from .ir import Graph, MetaGraph, MultitypeGraph, Constant
 from .prim import ops as P
@@ -565,6 +565,12 @@ hyper_add = HyperMap(fn_leaf=_leaf_add)
 
 
 _leaf_zeros_like = MultitypeGraph('zeros_like')
+
+
+@_leaf_zeros_like.register(Inferrer)
+@core
+def _bool_inferrer(_):
+    return newenv
 
 
 @_leaf_zeros_like.register(Bool)
