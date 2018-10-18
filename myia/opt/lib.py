@@ -1,6 +1,8 @@
 """Library of optimizations."""
 
 from ..graph_utils import dfs
+from ..dtype import type_cloner, ismyiatype, JTagged
+from ..infer import Inferrer
 from ..ir import succ_incoming, freevars_boundary, Graph, Constant, \
     GraphCloner, clone, MetaGraph
 from ..prim import Primitive, ops as P
@@ -393,3 +395,35 @@ def expand_metagraph(optimizer, node, equiv):
     g = mg.specialize_from_types(types)
     sexp = (g, *xs)
     return sexp_to_node(sexp, node.graph)
+
+
+@type_cloner.variant
+def _noinferrer(self, x: Inferrer):
+    raise TypeError('Has inferrer')
+
+
+@pattern_replacer(P.J, X)
+def elim_j(optimizer, node, equiv):
+    x = equiv[X]
+    try:
+        _noinferrer(x.type)
+        return x
+    except TypeError:
+        return node
+
+
+@pattern_replacer(P.Jinv, X)
+def elim_jinv(optimizer, node, equiv):
+    x = equiv[X]
+    try:
+        _noinferrer(node.type)
+        return x
+    except TypeError:
+        return node
+
+
+@pattern_replacer('just', C)
+def elim_jct(optimizer, node, equiv):
+    ct = equiv[C]
+    if ismyiatype(ct.type, JTagged):
+        ct.type = ct.type.subtype
