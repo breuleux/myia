@@ -5,7 +5,7 @@ import numpy
 from collections import defaultdict
 from types import FunctionType
 from typing import Tuple as TupleT, Dict as DictT, Any
-from .utils import Named, is_dataclass_type, as_frozen, overload
+from .utils import Named, is_dataclass_type, as_frozen, overload, smap
 
 
 _type_cache = {}
@@ -291,27 +291,33 @@ class EnvType(Object):
     """
 
 
+@smap.variant
+def _add(self, x: object, y):
+    return x + y
+
+
 class EnvInstance:
     def __init__(self, _contents={}):
         """Initialize a EnvType."""
-        self._contents = defaultdict(lambda: [])
-        for k, v in _contents.items():
-            self._contents[k] += v
+        self._contents = dict(_contents)
 
-    def pull(self, key):
+    def get(self, key):
         """Get the sensitivity list for the given key."""
         return self._contents[key]
 
-    def push(self, key, value):
-        """Push a sensitivity for the given key."""
+    def set(self, key, value):
+        """Set a value for the given key."""
         rval = EnvType(self._contents)
         rval._contents[key].append(value)
         return rval
 
-    def merge(self, other):
+    def add(self, other):
+        """Add two EnvInstances."""
         rval = EnvType(self._contents)
         for k, v in other._contents.items():
-            rval._contents[k] += v
+            v0 = rval._contents.get(k)
+            if v0 is not None:
+                rval._contents[k] = _add(v0, v)
         return rval
 
     def __len__(self):

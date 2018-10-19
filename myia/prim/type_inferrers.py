@@ -588,9 +588,12 @@ async def infer_type_env_getitem(track, env, key):
     await track.check(NodeType, key)
     node = await key['value']
     if node is ANYTHING:
-        raise InferenceError('Argument to env_getitem must be known.', refs=[key])
+        raise InferenceError(
+            'Argument to env_getitem must be known.',
+            refs=[key]
+        )
     ref = track.engine.ref(node, key.context)
-    return List[await ref.get_raw('type')]
+    return await ref.get_raw('type')
 
 
 @type_inferrer(P.env_add, nargs=2)

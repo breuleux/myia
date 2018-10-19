@@ -422,7 +422,7 @@ async def infer_shape_env_getitem(track, env, key):
     """Infer the return shape of env_getitem."""
     node = await key['value']
     ref = track.engine.ref(node, key.context)
-    return ListShape(await ref.get_raw('shape'))
+    return await ref.get_raw('shape')
 
 
 @shape_inferrer(P.env_add, nargs=2)

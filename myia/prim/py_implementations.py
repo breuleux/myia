@@ -602,16 +602,16 @@ def Jinv(x):
 @register(primops.env_setitem)
 def env_setitem(env, key, x):
     """Implement `env_setitem`."""
-    return env.push(key, x)
+    return env.set(key, x)
 
 
 @register(primops.env_getitem)
 def env_getitem(env, key):
     """Implement `env_getitem`."""
-    return env.pull(key)
+    return env.get(key)
 
 
 @register(primops.env_add)
 def env_add(env1, env2):
     """Implement `env_add`."""
-    return env1.merge(env2)
+    return env1.add(env2)
