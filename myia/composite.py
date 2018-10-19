@@ -4,7 +4,7 @@
 from dataclasses import dataclass
 
 from .dtype import Array, Object, Int, UInt, Float, Number, Bool, Tuple, \
-    List, Class, SensitivityMap, newenv
+    List, Class, EnvType, newenv
 from .hypermap import HyperMap
 from .infer import Inferrer, GraphInferrer
 from .info import About
@@ -14,7 +14,7 @@ from .prim.py_implementations import \
     array_map, bool_not, hastype, distribute, shape, broadcast_shape, \
     switch, identity, bool_and, tail, typeof, scalar_cast, scalar_add, \
     scalar_exp, scalar_log, scalar_sin, scalar_cos, scalar_tan, \
-    scalar_div, scalar_to_array, mergeenv
+    scalar_div, scalar_to_array, env_add
 
 
 def core(fn):
@@ -555,10 +555,10 @@ def _scalar_add(x, y):
     return scalar_add(x, y)
 
 
-@_leaf_add.register(SensitivityMap, SensitivityMap)
+@_leaf_add.register(EnvType, EnvType)
 @core
 def _sm_add(x, y):
-    return mergeenv(x, y)
+    return env_add(x, y)
 
 
 hyper_add = HyperMap(fn_leaf=_leaf_add)

@@ -6,7 +6,7 @@ from operator import getitem
 
 from ..dtype import Int, Float, Bool, Tuple, List, Array, UInt, Number, \
     TypeType, Class, Function, pytype_to_myiatype, Problem, type_cloner, \
-    JTagged, NodeType, SensitivityMap
+    JTagged, NodeType, EnvType
 from ..infer import ANYTHING, GraphInferrer, PartialInferrer, \
     MyiaTypeError, register_inferrer, Track, Inferrer, MetaGraphInferrer, \
     ExplicitInferrer, VOID, TransformedReference, MultiInferrer
@@ -48,7 +48,7 @@ def _import_type(self, t: Function, track):
 
 @type_cloner.variant
 def _stag_type(self, t: Inferrer):
-    return SensitivityMap
+    return EnvType
 
 
 class TypeTrack(Track):
@@ -573,28 +573,28 @@ async def infer_type_Jinv(track, x):
         return x_t.subtype
 
 
-@type_inferrer(P.pushenv, nargs=3)
-async def infer_type_pushenv(track, env, key, x):
-    """Infer the return type of pushenv."""
-    await track.check(SensitivityMap, env)
+@type_inferrer(P.env_setitem, nargs=3)
+async def infer_type_env_setitem(track, env, key, x):
+    """Infer the return type of env_setitem."""
+    await track.check(EnvType, env)
     await track.check(NodeType, key)
-    return SensitivityMap
+    return EnvType
 
 
-@type_inferrer(P.pullenv, nargs=2)
-async def infer_type_pullenv(track, env, key):
-    """Infer the return type of pullenv."""
-    await track.check(SensitivityMap, env)
+@type_inferrer(P.env_getitem, nargs=2)
+async def infer_type_env_getitem(track, env, key):
+    """Infer the return type of env_getitem."""
+    await track.check(EnvType, env)
     await track.check(NodeType, key)
     node = await key['value']
     if node is ANYTHING:
-        raise InferenceError('Argument to pullenv must be known.', refs=[key])
+        raise InferenceError('Argument to env_getitem must be known.', refs=[key])
     ref = track.engine.ref(node, key.context)
     return List[await ref.get_raw('type')]
 
 
-@type_inferrer(P.mergeenv, nargs=2)
-async def infer_type_mergeenv(track, env1, env2):
-    """Infer the return type of mergeenv."""
-    await track.check(SensitivityMap, env1, env2)
-    return SensitivityMap
+@type_inferrer(P.env_add, nargs=2)
+async def infer_type_env_add(track, env1, env2):
+    """Infer the return type of env_add."""
+    await track.check(EnvType, env1, env2)
+    return EnvType

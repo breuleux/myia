@@ -338,19 +338,19 @@ async def infer_value_Jinv(track, x):
     return await x.get_raw('value')
 
 
-@value_inferrer(P.pushenv, nargs=3)
-async def infer_value_pushenv(track, env, key, x):
-    """Infer the return value of pushenv."""
+@value_inferrer(P.env_setitem, nargs=3)
+async def infer_value_env_setitem(track, env, key, x):
+    """Infer the return value of env_setitem."""
     raise NotImplementedError()
 
 
-@value_inferrer(P.pullenv, nargs=2)
-async def infer_value_pullenv(track, env, key):
-    """Infer the return value of pullenv."""
+@value_inferrer(P.env_getitem, nargs=2)
+async def infer_value_env_getitem(track, env, key):
+    """Infer the return value of env_getitem."""
     raise NotImplementedError()
 
 
-@value_inferrer(P.mergeenv, nargs=2)
-async def infer_value_mergeenv(track, env1, env2):
-    """Infer the return value of mergeenv."""
+@value_inferrer(P.env_add, nargs=2)
+async def infer_value_env_add(track, env1, env2):
+    """Infer the return value of env_add."""
     raise NotImplementedError()

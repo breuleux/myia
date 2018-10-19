@@ -6,7 +6,7 @@ from functools import partial, reduce
 
 from ..dshape import NOSHAPE, TupleShape, ListShape, ClassShape, \
     find_matching_shape, shape_cloner
-from ..dtype import SensitivityMap
+from ..dtype import EnvType
 from ..infer import ANYTHING, GraphInferrer, register_inferrer, \
     PartialInferrer, Track, MyiaShapeError, Inferrer,  MetaGraphInferrer, \
     InferenceError, MyiaTypeError, TransformedReference, MultiInferrer
@@ -46,7 +46,7 @@ class ScalarShapeInferrer(Inferrer):
 
 @shape_cloner.variant
 def _stag_shape(self, shp: Inferrer):
-    return SensitivityMap
+    return EnvType
 
 
 class ShapeTrack(Track):
@@ -411,21 +411,21 @@ async def infer_shape_Jinv(track, x):
         return shp
 
 
-@shape_inferrer(P.pushenv, nargs=3)
-async def infer_shape_pushenv(track, env, key, x):
-    """Infer the return shape of pushenv."""
-    return SensitivityMap
+@shape_inferrer(P.env_setitem, nargs=3)
+async def infer_shape_env_setitem(track, env, key, x):
+    """Infer the return shape of env_setitem."""
+    return EnvType
 
 
-@shape_inferrer(P.pullenv, nargs=2)
-async def infer_shape_pullenv(track, env, key):
-    """Infer the return shape of pullenv."""
+@shape_inferrer(P.env_getitem, nargs=2)
+async def infer_shape_env_getitem(track, env, key):
+    """Infer the return shape of env_getitem."""
     node = await key['value']
     ref = track.engine.ref(node, key.context)
     return ListShape(await ref.get_raw('shape'))
 
 
-@shape_inferrer(P.mergeenv, nargs=2)
-async def infer_shape_mergeenv(track, env1, env2):
-    """Infer the return shape of mergeenv."""
-    return SensitivityMap
+@shape_inferrer(P.env_add, nargs=2)
+async def infer_shape_env_add(track, env1, env2):
+    """Infer the return shape of env_add."""
+    return EnvType

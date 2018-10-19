@@ -6,7 +6,7 @@ from types import FunctionType
 from myia.api import standard_debug_pipeline, Optimizer
 from myia.composite import grad
 from myia.debug.finite_diff import gen_variants, GradTester
-from myia.dtype import JTagged as JT, SensitivityMap as SM
+from myia.dtype import JTagged as JT, EnvType as Env
 from myia.grad import J as realJ
 from myia.infer import InferenceError
 from myia.opt import lib as optlib, CSE
@@ -74,7 +74,7 @@ def test_Jinv(x):
 @infer_std(
     type=[
         (f32, f32, InferenceError),
-        (JT[f32], JT[f32], T[JT[f32], T[SM, f32, f32]])
+        (JT[f32], JT[f32], T[JT[f32], T[Env, f32, f32]])
     ]
 )
 def test_J_fn(x, y):

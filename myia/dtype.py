@@ -281,7 +281,7 @@ class NodeType(Object):
     node: 'ANFNode'
 
 
-class SensitivityMap(Object):
+class EnvType(Object):
     """Represents a sensitivity map.
 
     This is not parameterizable, but roughly corresponds to a map from
@@ -291,9 +291,9 @@ class SensitivityMap(Object):
     """
 
 
-class SensitivityMapInstance:
+class EnvInstance:
     def __init__(self, _contents={}):
-        """Initialize a SensitivityMap."""
+        """Initialize a EnvType."""
         self._contents = defaultdict(lambda: [])
         for k, v in _contents.items():
             self._contents[k] += v
@@ -304,12 +304,12 @@ class SensitivityMapInstance:
 
     def push(self, key, value):
         """Push a sensitivity for the given key."""
-        rval = SensitivityMap(self._contents)
+        rval = EnvType(self._contents)
         rval._contents[key].append(value)
         return rval
 
     def merge(self, other):
-        rval = SensitivityMap(self._contents)
+        rval = EnvType(self._contents)
         for k, v in other._contents.items():
             rval._contents[k] += v
         return rval
@@ -318,7 +318,7 @@ class SensitivityMapInstance:
         return len(self._contents)
 
 
-newenv = SensitivityMapInstance()
+newenv = EnvInstance()
 
 
 class TypeType(Type):
@@ -434,8 +434,8 @@ def pytype_to_myiatype(pytype, instance=None):
         else:
             return Array[DTYPE_MAP[instance.dtype.name]]
 
-    elif pytype is SensitivityMapInstance:
-        return SensitivityMap
+    elif pytype is EnvInstance:
+        return EnvType
 
     elif is_dataclass_type(pytype):
         if pytype in dataclass_to_myiaclass:
