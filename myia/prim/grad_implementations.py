@@ -19,7 +19,7 @@ from .ops import Primitive
 from .py_implementations import \
     Jinv, J, \
     scalar_mul, scalar_div, scalar_sub, scalar_usub, scalar_log, scalar_pow, \
-    tuple_setitem
+    tuple_setitem, switch
 
 
 parse = standard_pipeline \
@@ -194,12 +194,20 @@ def bprop_Jinv(x, out, dout):
     return (J(dout),)
 
 
-@register_bprop(primops.switch)
-def bprop_switch(cond, tb, fb, out, dout):
+@register_augm(primops.switch)
+def __fprop__switch(jcond, jtb, jfb):
     """Backpropagator for primitive `switch`."""
-    return (zeros_like(cond),
-            switch(cond, dout, zeros_like(fb)),
-            switch(cond, zeros_like(tb), dout))
+    cond = Jinv(jcond)
+    rval = switch(cond, jtb, jfb)
+
+    def __bprop__switch(dout):
+        tb = Jinv(jtb)
+        fb = Jinv(jfb)
+        return (newenv,
+                zeros_like(cond),
+                switch(cond, dout, zeros_like(fb)),
+                switch(cond, zeros_like(tb), dout))
+    return rval, __bprop__switch
 
 
 class MakeTupleGradient(MetaGraph):
