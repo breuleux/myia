@@ -1,7 +1,7 @@
 """Library of optimizations."""
 
 from ..graph_utils import dfs
-from ..dtype import type_cloner, ismyiatype, JTagged
+from ..dtype import type_cloner, ismyiatype, JTagged, Function
 from ..infer import Inferrer
 from ..ir import succ_incoming, freevars_boundary, Graph, Constant, \
     GraphCloner, clone, MetaGraph
@@ -415,9 +415,16 @@ def _noinferrer(self, x: Inferrer):
     raise TypeError('Has inferrer')
 
 
+@type_cloner.variant
+def _noinferrer(self, x: Function):
+    raise TypeError('Has Function')
+
+
 @pattern_replacer(P.J, X)
 def elim_j(optimizer, node, equiv):
     x = equiv[X]
+    if x.type is UNKNOWN:
+        return node
     try:
         _noinferrer(x.type)
         return x
@@ -428,6 +435,8 @@ def elim_j(optimizer, node, equiv):
 @pattern_replacer(P.Jinv, X)
 def elim_jinv(optimizer, node, equiv):
     x = equiv[X]
+    if x.type is UNKNOWN:
+        return node
     try:
         _noinferrer(node.type)
         return x

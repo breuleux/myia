@@ -11,9 +11,9 @@ from myia.grad import J as realJ
 from myia.infer import InferenceError
 from myia.opt import lib as optlib, CSE
 from myia.pipeline import pipeline_function
-from myia.prim import ops as P
+from myia.prim import ops as P, Primitive
 from myia.prim.py_implementations import scalar_cast, J, Jinv, \
-    array_reduce, scalar_add, typeof
+    array_reduce, scalar_add, typeof, scalar_gt
 from myia.prim.grad_implementations import augmented_graphs
 from myia.prim.py_implementations import py_implementations as pyi
 
@@ -199,10 +199,14 @@ prim_tests = {
 
 @pipeline_function
 def grad_wrap(self, graph):
-    jg = realJ(graph, self.resources)
-    g = grad.make_gf(jg, jg.parameters,
-                     dbg=jg.debug, sens_param=True, get_all=True)
-    # buche(g)
+    if isinstance(graph, Primitive):
+        jg = realJ(graph, self.resources)
+        g = grad.make_gf(jg, jg.parameters,
+                         dbg=jg.debug, sens_param=True, get_all=True)
+    else:
+        g = grad.make_gf(graph, graph.parameters,
+                         dbg=graph.debug, sens_param=True, get_all=True,
+                         apply_j=True)
     return g
 
 
@@ -308,3 +312,88 @@ def test_tuples(x, y):
     tup = x + y, x * y
     z = tup[0] + tup[1]
     return z
+
+
+@grad_test((4.0, 5.0))
+def test_simple_closure(a, b):
+    """Test some trivial closures."""
+    def f():
+        return a + 1.0
+
+    def g():
+        return b + 2.0
+    return f() * g()
+
+
+@grad_test((4.0,))
+def test_closure(a):
+    """This is the closure test in the paper."""
+    def x1(b):
+
+        def x4(c):
+            return b
+        return x4
+    x2 = x1(a)
+    x3 = x2(1.0)
+    return x3
+
+
+@grad_test((4.0, 5.0), (6.4, -7.8))
+def test_if(a, b):
+    # This is max, but what this is really testing is the most basic
+    # if statement, so I prefer to name the test 'test_if'
+    if a > b:
+        return a
+    else:
+        return b
+
+
+@grad_test((4.0, 5.0), (6.4, -7.8))
+def test_if2(a, b):
+    # This is max, but what this is really testing is the most basic
+    # if statement, so I prefer to name the test 'test_if'
+    if a > b:
+        return a * a
+    else:
+        return b + b
+
+
+@grad_test(3.1, 9.1)
+def test_fact(x):
+    def fact(n):
+        if n <= 1:
+            return 1
+        else:
+            return n * fact(n - 1)
+    return fact(x)
+
+
+@grad_test((4.0,))
+def test_while(x):
+    rval = x
+    while rval < 100:
+        rval = rval * rval
+    return rval
+
+
+@grad_test((4.0, 5.0, 2.0), (7.0, 3.0, 1.0))
+def test_while_2(x, y, z):
+    rval = 0
+    # Cannot compare to 0 or finite diff is unstable
+    while x > -0.1:
+        rval = rval + y
+        x = x - z
+    return rval
+
+
+@grad_test((2.0,), (3.0,))
+def test_pow10(x):
+    v = x
+    j = 0
+    while j < 3:
+        i = 0
+        while i < 3:
+            v = v * x
+            i = i + 1
+        j = j + 1
+    return v

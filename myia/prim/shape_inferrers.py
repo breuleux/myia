@@ -10,7 +10,8 @@ from ..dshape import NOSHAPE, TupleShape, ListShape, ClassShape, \
 from ..dtype import EnvType, EnvInstance
 from ..infer import ANYTHING, GraphInferrer, register_inferrer, \
     PartialInferrer, Track, MyiaShapeError, Inferrer,  MetaGraphInferrer, \
-    InferenceError, MyiaTypeError, TransformedReference, MultiInferrer
+    InferenceError, MyiaTypeError, TransformedReference, MultiInferrer, \
+    Context, DummyInferrer
 from ..infer.jinf import JInferrer
 from ..ir import Graph, MetaGraph
 from ..dtype import Array, Tuple, List, Class, TypeType, ismyiatype, \
@@ -106,6 +107,8 @@ class ShapeTrack(Track):
                 return ClassShape(
                     dict((n, self.from_value(getattr(v, n), context))
                          for n in v.__dataclass_fields__.keys()))
+        elif isinstance(v, EnvInstance):
+            return EnvType
         elif isinstance(v, numpy.ndarray):
             return v.shape
         else:
@@ -410,6 +413,13 @@ async def infer_shape_Jinv(track, x):
     shp = await x.get_shallow('shape')
     if isinstance(shp, JInferrer):
         return shp.fn
+    elif isinstance(shp, GraphInferrer):
+        g = shp._graph
+        primal = g and g.transforms.get('primal', None)
+        if primal:
+            return DummyInferrer(track)
+        else:
+            raise MyiaTypeError('Bad input type for Jinv', refs=[x])
     else:
         return shp
 

@@ -9,7 +9,8 @@ from ..dtype import Int, Float, Bool, Tuple, List, Array, UInt, Number, \
     JTagged, EnvType, SymbolicKeyType
 from ..infer import ANYTHING, GraphInferrer, PartialInferrer, \
     MyiaTypeError, register_inferrer, Track, Inferrer, MetaGraphInferrer, \
-    ExplicitInferrer, VOID, TransformedReference, MultiInferrer
+    ExplicitInferrer, VOID, TransformedReference, MultiInferrer, \
+    Context, DummyInferrer
 from ..infer.jinf import JInferrer
 from ..ir import Graph, MetaGraph
 from ..utils import Namespace, Var, RestrictedVar, is_dataclass_type
@@ -563,14 +564,29 @@ async def infer_type_J(track, x):
 @type_inferrer(P.Jinv, nargs=1)
 async def infer_type_Jinv(track, x):
     """Infer the return type of Jinv."""
-    def isjinf(x):  # noqa: D400, D403
-        """JInferrer"""
-        return isinstance(x, JInferrer)
-    x_t = await track.check((JTagged, isjinf), x)
+    x_t = await x.get_shallow('type')
     if isinstance(x_t, JInferrer):
         return x_t.fn
-    else:
+    elif isinstance(x_t, GraphInferrer):
+        g = x_t._graph
+        primal = g and g.transforms.get('primal', None)
+        if primal:
+            # TODO: Use primal graph instead of dummy.
+            # assert primal.parent is None
+            # primal = track.engine.pipeline.resources.convert(primal)
+            # return track.from_value(primal, Context.empty())
+            node = x.node
+            dinf = DummyInferrer(track)
+            dinf.data = node
+            return dinf
+        else:
+            raise MyiaTypeError(f'Bad input type for Jinv: {x_t}',
+                                refs=[x])
+    elif ismyiatype(x_t, JTagged):
         return x_t.subtype
+    else:
+        raise MyiaTypeError(f'Bad input type for Jinv: {x_t}',
+                            refs=[x])
 
 
 @type_inferrer(P.embed, nargs=1)

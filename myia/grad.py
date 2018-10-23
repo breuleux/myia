@@ -6,6 +6,7 @@ from functools import reduce
 from typing import Set, Dict, Tuple, List
 
 from .composite import zeros_like, hyper_add
+from .dtype import newenv
 from .info import About
 from .ir import Apply, Constant, Graph, ANFNode, manage, clone
 from .opt import sexp_to_node
@@ -188,6 +189,15 @@ class FPropRemapper(GraphRemapper):
         elems = self.get(g, g.output), self.remappers['grad_sens'].get_graph(g)
         ng.output = ng.apply(primops.make_tuple, *elems)
 
+    def get_jinv(self, node):
+        if (node, 'jinv') not in self.repl:
+            ng = self.get_graph(node.graph)
+            node2 = self.get(None, node)
+            with About(node.debug, 'equiv'):
+                new_node = ng.apply(primops.Jinv, node2)
+            self.repl[node, 'jinv'] = new_node
+        return self.repl[node, 'jinv']
+
 
 class BPropRemapper(GraphRemapper):
     def link_apply(self, g, ng, node, new_node):
@@ -278,14 +288,18 @@ class SensRemapper(GraphRemapper):
         for child in children:
             idx = self.fv_order[child].index(node)
             assert (g, child) in self.repl
-            sexp = (primops.tuple_getitem, self.get(g, child), idx)
+            sexp = (primops.env_getitem,
+                    self.get(g, child),
+                    (primops.embed,
+                     self.remappers['grad_fprop'].get_jinv(node)),
+                    (zeros_like,
+                     self.remappers['grad_fprop'].get_jinv(node)))
             contribs.append(sexp)
 
         n = len(contribs)
         if n == 0:
             sexp = (zeros_like,
-                    (primops.Jinv,
-                     self.remappers['grad_fprop'].get(g, node)))
+                    self.remappers['grad_fprop'].get_jinv(node))
         else:
             def mkadd(x, y):
                 return (hyper_add, x, y)
@@ -294,10 +308,19 @@ class SensRemapper(GraphRemapper):
         new_node.inputs = sexp_to_node(sexp, ng).inputs
 
     def finalize_graph(self, g, ng):
-        fv_sens = [self.get(g, fv) for fv in g.free_variables_total]
+        fv_sens = Constant(newenv)
+        for fv in g.free_variables_total:
+            sens = self.get(g, fv)
+            fv_sens = ng.apply(
+                primops.env_setitem,
+                fv_sens,
+                ng.apply(primops.embed,
+                         self.remappers['grad_fprop'].get_jinv(fv)),
+                sens
+            )
         in_sens = [self.get(g, p) for p in g.parameters]
         ng.output = ng.apply(primops.make_tuple,
-                             ng.apply(primops.make_tuple, *fv_sens),
+                             fv_sens,
                              *in_sens)
         if len(ng.parameters) == 0:
             with About(g.output.debug, 'grad_sens'):
