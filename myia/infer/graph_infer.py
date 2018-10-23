@@ -311,6 +311,18 @@ class Inferrer(DynamicMap):
                         await concretize_type(cached)]
 
 
+class DummyInferrer(Inferrer):
+    """Has the Inferrer class but cannot be called."""
+
+    def __init__(self, track):
+        """Initialize the DummyInferrer."""
+        super().__init__(track, 'dummy')
+
+    async def infer(self, *args):
+        """Nada."""
+        raise Exception('Cannot call DummyInferrer.')
+
+
 class MultiInferrer(Inferrer):
     """Inferrer to use when the result is multiple possible callables.
 
