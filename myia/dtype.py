@@ -275,10 +275,25 @@ class JTagged(Object):
     subtype: Type
 
 
-class NodeType(Object):
-    """Represents a node type (this is a symbol type of sorts)."""
+class SymbolicKeyType(Object):
+    """Type of a SymbolicKeyInstance."""
 
-    node: 'ANFNode'
+
+class SymbolicKeyInstance:
+    """Stores information that corresponds to a node in the graph."""
+
+    def __init__(self, node, inferred):
+        """Initialize a SymbolicKeyInstance."""
+        self.node = node
+        self.inferred = inferred
+
+    def __eq__(self, other):
+        return (isinstance(other, SymbolicKeyInstance)
+                and self.node is other.node
+                and self.inferred == other.inferred)
+
+    def __hash__(self):
+        return hash((self.node, tuple(sorted(self.inferred.items()))))
 
 
 class EnvType(Object):
@@ -301,14 +316,14 @@ class EnvInstance:
         """Initialize a EnvType."""
         self._contents = dict(_contents)
 
-    def get(self, key):
+    def get(self, key, default):
         """Get the sensitivity list for the given key."""
-        return self._contents[key]
+        return self._contents.get(key, default)
 
     def set(self, key, value):
         """Set a value for the given key."""
-        rval = EnvType(self._contents)
-        rval._contents[key].append(value)
+        rval = EnvInstance(self._contents)
+        rval._contents[key] = value
         return rval
 
     def add(self, other):
@@ -443,6 +458,9 @@ def pytype_to_myiatype(pytype, instance=None):
     elif pytype is EnvInstance:
         return EnvType
 
+    elif pytype is SymbolicKeyInstance:
+        return SymbolicKeyType
+
     elif is_dataclass_type(pytype):
         if pytype in dataclass_to_myiaclass:
             mcls = dataclass_to_myiaclass[pytype]
@@ -477,7 +495,7 @@ def pytype_to_myiatype(pytype, instance=None):
         return External[pytype]
 
 
-leaf_types = (Bool, Number, TypeType, Problem, External)
+leaf_types = (Bool, Number, TypeType, Problem, External, SymbolicKeyType)
 
 
 @overload(bootstrap=True)

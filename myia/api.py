@@ -10,7 +10,7 @@ from . import dtype, parser, composite as C, operations
 from .cconv import closure_convert
 from .dtype import Tuple, List, Class, Array, Int, Float, Bool, \
     Number, tag_to_dataclass, ismyiatype, type_to_np_dtype, \
-    TypeMeta, Function, JTagged, NodeType, EnvType
+    TypeMeta, Function, JTagged, SymbolicKeyType, EnvType
 from .infer import InferenceEngine, Inferrer, ANYTHING, \
     Context, Contextless, CONTEXTLESS, reify
 from .ir import Graph, clone, GraphManager
@@ -246,7 +246,7 @@ standard_method_map = TypeMap({
     },
     dtype.JTagged: {
     },
-    dtype.NodeType: {
+    dtype.SymbolicKeyType: {
     },
     dtype.EnvType: {
     },

@@ -6,7 +6,7 @@ from operator import getitem
 
 from ..dtype import Int, Float, Bool, Tuple, List, Array, UInt, Number, \
     TypeType, Class, Function, pytype_to_myiatype, Problem, type_cloner, \
-    JTagged, NodeType, EnvType, SymbolicKeyType
+    JTagged, EnvType, SymbolicKeyType
 from ..infer import ANYTHING, GraphInferrer, PartialInferrer, \
     MyiaTypeError, register_inferrer, Track, Inferrer, MetaGraphInferrer, \
     ExplicitInferrer, VOID, TransformedReference, MultiInferrer
