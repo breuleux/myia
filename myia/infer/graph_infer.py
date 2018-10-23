@@ -742,6 +742,10 @@ class TransformedReference(AbstractReference):
         v = await self.get_raw(track_name)
         return await reify(v)
 
+    async def get_shallow(self, track_name):
+        v = await self.get_raw(track_name)
+        return await reify_shallow(v)
+
 
 ########
 # Core #
