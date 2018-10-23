@@ -569,7 +569,7 @@ _leaf_zeros_like = MultitypeGraph('zeros_like')
 
 @_leaf_zeros_like.register(Inferrer)
 @core
-def _bool_inferrer(_):
+def _inferrer_zero(_):
     return newenv
 
 
