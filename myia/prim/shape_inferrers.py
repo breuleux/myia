@@ -1,6 +1,7 @@
 """Definition of shape inference for primitives."""
 
 import operator
+import numpy
 from dataclasses import is_dataclass
 from functools import partial, reduce
 
@@ -105,8 +106,10 @@ class ShapeTrack(Track):
                 return ClassShape(
                     dict((n, self.from_value(getattr(v, n), context))
                          for n in v.__dataclass_fields__.keys()))
+        elif isinstance(v, numpy.ndarray):
+            return v.shape
         else:
-            return getattr(v, 'shape', NOSHAPE)
+            return NOSHAPE
 
     def jtag(self, shp):
         """Return type for J(x) given shape(x)."""
