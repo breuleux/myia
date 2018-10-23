@@ -368,6 +368,7 @@ class GraphInferrer(Inferrer):
             self.context = self.engine.context_class.empty()
         else:
             self.context = context.filter(graph)
+        assert self.context is not None
 
     async def make_graph(self, args):
         """Return the graph to use for the given args."""
