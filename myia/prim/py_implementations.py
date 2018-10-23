@@ -599,6 +599,12 @@ def Jinv(x):
     raise NotImplementedError()
 
 
+@register(primops.embed)
+def embed(node):
+    """Implement `embed`."""
+    raise NotImplementedError()
+
+
 @register(primops.env_setitem)
 def env_setitem(env, key, x):
     """Implement `env_setitem`."""
@@ -606,9 +612,9 @@ def env_setitem(env, key, x):
 
 
 @register(primops.env_getitem)
-def env_getitem(env, key):
+def env_getitem(env, key, default):
     """Implement `env_getitem`."""
-    return env.get(key)
+    return env.get(key, default)
 
 
 @register(primops.env_add)

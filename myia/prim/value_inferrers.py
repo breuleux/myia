@@ -7,7 +7,7 @@ from functools import partial
 from operator import getitem
 
 from .. import dtype as types
-from ..dtype import pytype_to_myiatype, TypeType
+from ..dtype import pytype_to_myiatype, TypeType, SymbolicKeyInstance
 from ..infer import ValueWrapper, InferenceError, PartialInferrer, \
     ANYTHING, Inferrer, GraphInferrer, register_inferrer, Track, \
     unwrap, MetaGraphInferrer, InferenceVar, find_coherent_result, \
@@ -338,19 +338,9 @@ async def infer_value_Jinv(track, x):
     return await x.get_raw('value')
 
 
-@value_inferrer(P.env_setitem, nargs=3)
-async def infer_value_env_setitem(track, env, key, x):
-    """Infer the return value of env_setitem."""
-    raise NotImplementedError()
-
-
-@value_inferrer(P.env_getitem, nargs=2)
-async def infer_value_env_getitem(track, env, key):
-    """Infer the return value of env_getitem."""
-    raise NotImplementedError()
-
-
-@value_inferrer(P.env_add, nargs=2)
-async def infer_value_env_add(track, env1, env2):
-    """Infer the return value of env_add."""
-    raise NotImplementedError()
+@value_inferrer(P.embed, nargs=1)
+async def infer_value_embed(track, x):
+    """Infer the return value of embed."""
+    inferred = {track_name: await x[track_name]
+                for track_name in track.engine.tracks}
+    return SymbolicKeyInstance(x.node, inferred)

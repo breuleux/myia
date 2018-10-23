@@ -6,7 +6,7 @@ from functools import partial, reduce
 
 from ..dshape import NOSHAPE, TupleShape, ListShape, ClassShape, \
     find_matching_shape, shape_cloner
-from ..dtype import EnvType
+from ..dtype import EnvType, EnvInstance
 from ..infer import ANYTHING, GraphInferrer, register_inferrer, \
     PartialInferrer, Track, MyiaShapeError, Inferrer,  MetaGraphInferrer, \
     InferenceError, MyiaTypeError, TransformedReference, MultiInferrer
@@ -411,18 +411,23 @@ async def infer_shape_Jinv(track, x):
         return shp
 
 
+@shape_inferrer(P.embed, nargs=1)
+async def infer_shape_embed(track, x):
+    """Infer the return shape of embed."""
+    return NOSHAPE
+
+
 @shape_inferrer(P.env_setitem, nargs=3)
 async def infer_shape_env_setitem(track, env, key, x):
     """Infer the return shape of env_setitem."""
     return EnvType
 
 
-@shape_inferrer(P.env_getitem, nargs=2)
-async def infer_shape_env_getitem(track, env, key):
+@shape_inferrer(P.env_getitem, nargs=3)
+async def infer_shape_env_getitem(track, env, key, default):
     """Infer the return shape of env_getitem."""
-    node = await key['value']
-    ref = track.engine.ref(node, key.context)
-    return await ref.get_raw('shape')
+    key_v = await key['value']
+    return await track.assert_same(key_v.inferred['shape'], default)
 
 
 @shape_inferrer(P.env_add, nargs=2)
