@@ -358,7 +358,7 @@ def test_if2(a, b):
         return b + b
 
 
-@grad_test(3.1, 9.1)
+@grad_test(4.1,)
 def test_fact(x):
     def fact(n):
         if n <= 1:
@@ -376,7 +376,7 @@ def test_while(x):
     return rval
 
 
-@grad_test((4.0, 5.0, 2.0), (7.0, 3.0, 1.0))
+@grad_test((4.0, 5.0, 2.0),)
 def test_while_2(x, y, z):
     rval = 0
     # Cannot compare to 0 or finite diff is unstable
@@ -386,7 +386,7 @@ def test_while_2(x, y, z):
     return rval
 
 
-@grad_test((2.0,), (3.0,))
+@grad_test(2.0,)
 def test_pow10(x):
     v = x
     j = 0
