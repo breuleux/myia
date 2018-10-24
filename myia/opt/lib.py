@@ -4,7 +4,7 @@ from ..graph_utils import dfs
 from ..dtype import type_cloner, ismyiatype, JTagged, Function
 from ..infer import Inferrer
 from ..ir import succ_incoming, freevars_boundary, Graph, Constant, \
-    GraphCloner, MetaGraph
+    GraphCloner
 from ..prim import Primitive, ops as P
 from ..utils import Namespace, UNKNOWN, overload
 from ..utils.unify import Var, var, SVar
@@ -37,16 +37,11 @@ def _is_cg(n):
     return n.is_constant_graph()
 
 
-def _is_mg(n):
-    return n.is_constant(MetaGraph)
-
-
 C = var(_is_c)
 C1 = var(_is_c)
 C2 = var(_is_c)
 CNS = var(lambda x: x.is_constant(Namespace))
 G = var(_is_cg)
-MG = var(_is_mg)
 NIL = var(lambda x: x.is_constant() and x.value == ())
 
 Xs = SVar(Var())
@@ -409,18 +404,6 @@ def expand_J(optimizer, node, equiv):
     except NotImplementedError:
         return None
     return Constant(newg)
-
-
-# @pattern_replacer(MG, Xs)
-# def expand_metagraph(optimizer, node, equiv):
-#     mg = equiv[MG].value
-#     xs = equiv[Xs]
-#     types = [x.type for x in xs]
-#     if any(t is UNKNOWN for t in types):
-#         return node
-#     g = mg.specialize_from_types(types)
-#     sexp = (g, *xs)
-#     return sexp_to_node(sexp, node.graph)
 
 
 @type_cloner.variant
