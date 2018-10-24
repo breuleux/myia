@@ -27,7 +27,6 @@ step_optgrad = Optimizer.partial(
             optlib.simplify_always_false,
             optlib.inline_core,
             optlib.simplify_partial,
-            optlib.replace_applicator,
             optlib.bubble_op_tuple_unary,
             optlib.elim_identity,
         ],
