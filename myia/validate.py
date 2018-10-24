@@ -123,6 +123,7 @@ whitelist = frozenset({
     # P.make_record,
     P.env_getitem,
     P.env_setitem,
+    P.env_add,
 })
 
 

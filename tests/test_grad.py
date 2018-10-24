@@ -312,6 +312,18 @@ def test_tuples(x, y):
 
 
 @grad_test((4.0, 5.0))
+def test_hof(a, b):
+    """Test higher order functions."""
+    def f(g, x):
+        return g(x) * g(x + 10.0)
+
+    def g(x):
+        return x * b
+
+    return f(g, a) + f(g, b)
+
+
+@grad_test((4.0, 5.0))
 def test_simple_closure(a, b):
     """Test some trivial closures."""
     def f():

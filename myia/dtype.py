@@ -333,15 +333,12 @@ class EnvInstance:
 
     def add(self, other):
         """Add two EnvInstances."""
-        rval = EnvType(self._contents)
+        rval = EnvInstance(self._contents)
         for k, v in other._contents.items():
             v0 = rval._contents.get(k)
             if v0 is not None:
                 rval._contents[k] = _add(v0, v)
         return rval
-
-    def __len__(self):
-        return len(self._contents)
 
 
 newenv = EnvInstance()
