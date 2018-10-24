@@ -4,13 +4,12 @@
 from functools import reduce
 
 from .composite import zeros_like, hyper_add
-from .dtype import newenv
 from .info import About
 from .ir import Constant, Graph, clone
 from .opt import sexp_to_node
 from .prim import ops as primops, Primitive
 from .prim.grad_implementations import augmented_graphs
-from .utils import Partializable, overload
+from .utils import Partializable, overload, newenv
 
 
 class GraphRemapper(Partializable):

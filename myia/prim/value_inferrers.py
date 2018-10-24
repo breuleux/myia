@@ -7,13 +7,13 @@ from functools import partial
 from operator import getitem
 
 from .. import dtype as types
-from ..dtype import pytype_to_myiatype, TypeType, SymbolicKeyInstance
+from ..dtype import pytype_to_myiatype, TypeType
 from ..infer import ValueWrapper, InferenceError, PartialInferrer, \
     ANYTHING, Inferrer, GraphInferrer, register_inferrer, Track, \
     unwrap, MetaGraphInferrer, InferenceVar, find_coherent_result, \
     MyiaTypeError, Context
 from ..ir import Graph, MetaGraph
-from ..utils import is_dataclass_type, overload
+from ..utils import is_dataclass_type, overload, SymbolicKeyInstance
 
 from . import ops as P
 from .inferrer_utils import static_getter, getelement

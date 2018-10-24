@@ -1,11 +1,10 @@
 """Utilities to generate or map labels for nodes and graphs."""
 
 
-from ..dtype import EnvInstance, SymbolicKeyInstance
 from ..info import DebugInfo
 from ..ir.anf import ANFNode, Graph
 from ..prim import Primitive
-from ..utils import Named, Namespace
+from ..utils import Named, Namespace, EnvInstance, SymbolicKeyInstance
 
 
 short_relation_symbols = {

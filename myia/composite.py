@@ -4,7 +4,7 @@
 from dataclasses import dataclass
 
 from .dtype import Array, Object, Int, UInt, Float, Number, Bool, Tuple, \
-    List, Class, EnvType, newenv
+    List, Class, EnvType
 from .hypermap import HyperMap
 from .infer import Inferrer, GraphInferrer
 from .info import About
@@ -15,6 +15,7 @@ from .prim.py_implementations import \
     switch, identity, bool_and, tail, typeof, scalar_cast, scalar_add, \
     scalar_exp, scalar_log, scalar_sin, scalar_cos, scalar_tan, \
     scalar_div, scalar_to_array, env_add
+from .utils import newenv
 
 
 def core(fn):

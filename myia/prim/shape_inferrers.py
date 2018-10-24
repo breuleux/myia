@@ -7,15 +7,15 @@ from functools import partial, reduce
 
 from ..dshape import NOSHAPE, TupleShape, ListShape, ClassShape, \
     find_matching_shape, shape_cloner
-from ..dtype import EnvType, EnvInstance
+from ..dtype import Array, Tuple, List, Class, TypeType, ismyiatype, \
+    pytype_to_myiatype, EnvType
 from ..infer import ANYTHING, GraphInferrer, register_inferrer, \
     PartialInferrer, Track, MyiaShapeError, Inferrer,  MetaGraphInferrer, \
     InferenceError, MyiaTypeError, TransformedReference, MultiInferrer, \
     DummyInferrer
 from ..infer.jinf import JInferrer
 from ..ir import Graph, MetaGraph
-from ..dtype import Array, Tuple, List, Class, TypeType, ismyiatype, \
-    pytype_to_myiatype
+from ..utils import EnvInstance
 
 from . import ops as P
 from .inferrer_utils import static_getter, getelement

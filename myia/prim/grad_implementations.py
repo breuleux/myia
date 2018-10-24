@@ -6,10 +6,9 @@ the (augmented) original primitive's output and a backpropagator function.
 
 from ..api import standard_pipeline
 from ..composite import zeros_like
-from ..dtype import newenv
 from ..info import NamedDebugInfo, About
 from ..ir import Constant, Graph, manage, clone, MetaGraph
-from ..utils import Registry
+from ..utils import Registry, newenv
 
 from . import ops as primops
 from .py_implementations import \

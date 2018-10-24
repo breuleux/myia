@@ -3,14 +3,14 @@
 import numpy
 from collections import Counter
 
-from .dtype import Type, Function, Number, Bool, TypeType, TypeMeta, \
-    SymbolicKeyInstance, EnvInstance
+from .dtype import Type, Function, Number, Bool, TypeType, TypeMeta
 from .infer import ANYTHING, Context, concretize_type, \
     GraphInferrer, MetaGraphInferrer, PartialInferrer, Inferrer, \
     Unspecializable, INACCESSIBLE
 from .ir import GraphCloner, Constant
 from .prim import ops as P, Primitive
-from .utils import Overload, overload, Namespace
+from .utils import Overload, overload, Namespace, SymbolicKeyInstance, \
+    EnvInstance
 
 
 def _const(v, t):
