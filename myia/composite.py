@@ -623,13 +623,10 @@ class GradOperation(MetaGraph):
         self.cache = {}
 
     def make_gf(self, jf, orig_params,
-                dbg=None, sens_param=False, get_all=False,
+                dbg, sens_param=False, get_all=False,
                 apply_j=False):
         """Make the graph for the grad."""
-        if dbg:
-            with About(dbg, 'grad'):
-                df = Graph()
-        else:
+        with About(dbg, 'grad'):
             df = Graph()
 
         if apply_j:
@@ -637,10 +634,7 @@ class GradOperation(MetaGraph):
 
         params = []
         for orig_p in orig_params:
-            if orig_p:
-                with About(orig_p.debug, 'grad'):
-                    params.append(df.add_parameter())
-            else:
+            with About(orig_p.debug, 'grad'):
                 params.append(df.add_parameter())
 
         jparams = [df.apply(P.J, p) for p in params]

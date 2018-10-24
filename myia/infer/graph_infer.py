@@ -300,7 +300,7 @@ class DummyInferrer(Inferrer):
 
     async def infer(self, *args):
         """Nada."""
-        raise Exception('Cannot call DummyInferrer.')
+        raise AssertionError('Cannot call DummyInferrer.')
 
 
 class MultiInferrer(Inferrer):

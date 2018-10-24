@@ -38,8 +38,3 @@ class JInferrer(Inferrer):
             name=f'{syms["grad_bprop"]}{self.fn.identifier}'
         )
         return self.mktuple([res_t, bprop_t])
-
-    def provably_equivalent(self, other):
-        """Whether two JInferrers are provably equivalent."""
-        return (isinstance(other, JInferrer) and
-                self.fn.provably_equivalent(other.fn))

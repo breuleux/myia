@@ -308,8 +308,7 @@ class BPropAppRemapper(GraphRemapper):
 
         x = a(b, c) => D:x = (C:x)(E:x)
         """
-        if node.is_parameter():
-            return
+        assert not node.is_parameter()
         fn = self.remappers['grad_bprop'].get(g, node)
         arg = self.remappers['grad_sens'].get(g, node)
         new_node.inputs = [fn, arg]
