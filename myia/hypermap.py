@@ -4,7 +4,7 @@
 from . import operations
 from .infer import InferenceError
 from .ir import MetaGraph, Graph
-from .dtype import Array, List, Tuple, Class, Type, tag_to_dataclass, \
+from .dtype import Array, List, Tuple, Class, tag_to_dataclass, \
     pytype_to_myiatype, ismyiatype
 from .utils import TypeMap, Overload
 from .prim import ops as P

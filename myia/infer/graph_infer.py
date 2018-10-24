@@ -652,10 +652,6 @@ class Reference(AbstractReference):
         self.context = context and context.filter(g)
         self._hash = hash((self.node, self.context))
 
-    async def __getitem__(self, track):
-        """Get the value for the track (asynchronous)."""
-        return await reify(await self.get_raw(track))
-
     def get(self, track="*"):
         """Get the value for the track (synchronous).
 
@@ -668,8 +664,12 @@ class Reference(AbstractReference):
         return self.engine.get_inferred(track, self)
 
     async def get_shallow(self, track):
-        """Get the raw value for the track, which might be wrapped."""
+        """Get the value for the track, reified for one level."""
         return await reify_shallow(await self.get_raw(track,))
+
+    async def __getitem__(self, track):
+        """Get the value for the track (asynchronous)."""
+        return await reify(await self.get_raw(track))
 
     def __eq__(self, other):
         return isinstance(other, Reference) \
@@ -700,10 +700,11 @@ class VirtualReference(AbstractReference):
         """Get the raw value for the track, which might be wrapped."""
         return self.values[track]
 
-    async def __getitem__(self, track):
+    async def get_shallow(self, track):
+        """Get the value for the track, reified for one level."""
         return self.values[track]
 
-    async def get_shallow(self, track):
+    async def __getitem__(self, track):
         return self.values[track]
 
     def __eq__(self, other):
@@ -738,14 +739,15 @@ class TransformedReference(AbstractReference):
         else:
             return await inf(*self.refs)
 
+    async def get_shallow(self, track_name):
+        """Get the value for the track, reified for one level."""
+        v = await self.get_raw(track_name)
+        return await reify_shallow(v)
+
     async def __getitem__(self, track_name):
         """Get the value for the track (asynchronous)."""
         v = await self.get_raw(track_name)
         return await reify(v)
-
-    async def get_shallow(self, track_name):
-        v = await self.get_raw(track_name)
-        return await reify_shallow(v)
 
 
 ########

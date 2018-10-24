@@ -4,9 +4,6 @@ Each primitive is associated to an augmented function, which returns a pair of
 the (augmented) original primitive's output and a backpropagator function.
 """
 
-from math import log
-from types import FunctionType
-
 from ..api import standard_pipeline
 from ..composite import zeros_like
 from ..dtype import newenv
@@ -15,7 +12,6 @@ from ..ir import Constant, Graph, manage, clone, MetaGraph
 from ..utils import Registry
 
 from . import ops as primops
-from .ops import Primitive
 from .py_implementations import \
     Jinv, J, \
     scalar_mul, scalar_div, scalar_sub, scalar_usub, scalar_log, scalar_pow, \
@@ -211,12 +207,15 @@ def __fprop__switch(jcond, jtb, jfb):
 
 
 class MakeTupleGradient(MetaGraph):
+    """Generate the gradient graph for make_tuple."""
+
     def __init__(self, name):
-        """Initialize a GradOperation."""
+        """Initialize a MakeTupleGradient."""
         super().__init__(name)
         self.cache = {}
 
     def specialize_from_types(self, types):
+        """Generate the gradient graph."""
         types = tuple(types)
         if types in self.cache:
             return self.cache[types]

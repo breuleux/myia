@@ -50,8 +50,7 @@ def _validate_shape(t: List, shp):
 def _validate_shape(
         t: (Number, TypeType, Bool, Problem[DEAD], Function, EnvType,
             SymbolicKeyType),
-        shp
-    ):
+        shp):
     pass
 
 

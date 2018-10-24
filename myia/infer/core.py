@@ -266,7 +266,6 @@ class EquivalenceChecker:
 
     async def assert_same(self, *things, refs=[]):
         """Assert that all futures/values have the same value."""
-
         futs = []
         for x in things:
             if hasattr(x, '__await__'):

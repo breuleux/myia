@@ -2,7 +2,6 @@
 
 
 import numpy
-from collections import defaultdict
 from types import FunctionType
 from typing import Tuple as TupleT, Dict as DictT, Any
 from .utils import Named, is_dataclass_type, as_frozen, overload, smap
@@ -312,6 +311,12 @@ def _add(self, x: object, y):
 
 
 class EnvInstance:
+    """Environment mapping keys to values.
+
+    Keys are SymbolicKeyInstances, which represent nodes in the graph along
+    with inferred properties.
+    """
+
     def __init__(self, _contents={}):
         """Initialize a EnvType."""
         self._contents = dict(_contents)

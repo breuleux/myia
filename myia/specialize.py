@@ -78,17 +78,17 @@ def _is_concrete_value(v: (tuple, list)):
     return all(_is_concrete_value(x) for x in v)
 
 
-@overload
+@overload  # noqa: F811
 def _is_concrete_value(v: EnvInstance):
     return all(_is_concrete_value(x) for x in v._contents.values())
 
 
-@overload
+@overload  # noqa: F811
 def _is_concrete_value(v: _legal):
     return True
 
 
-@overload
+@overload  # noqa: F811
 def _is_concrete_value(v: object):
     return False
 

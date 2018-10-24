@@ -9,7 +9,7 @@ from ..utils import smap, overload
 
 
 @smap.variant
-def zeros_like(self, x: object):
+def _zeros_like(self, x: object):
     return 0
 
 
@@ -48,19 +48,19 @@ def gen_paths(self, obj: NoTestGrad, path):
     yield from []
 
 
-@overload
+@overload  # noqa: F811
 def gen_paths(self, obj: (list, tuple), path):
     for i, x in enumerate(obj):
         yield from gen_paths(x, path + (i,))
 
 
-@overload
+@overload  # noqa: F811
 def gen_paths(self, obj: numpy.ndarray, path):
     for coord in itertools.product(*[range(d) for d in obj.shape]):
         yield path + (coord,)
 
 
-@overload
+@overload  # noqa: F811
 def gen_paths(self, obj: object, path):
     yield path
 
@@ -94,12 +94,12 @@ def gen_variants(self, obj: NoTestGrad, gen, path):
     yield from []
 
 
-@overload
+@overload  # noqa: F811
 def gen_variants(self, obj: object, gen, path):
     yield (gen(obj), path)
 
 
-@overload
+@overload  # noqa: F811
 def gen_variants(self, obj: (list, tuple), gen, path):
     for i, x in enumerate(obj):
         for variants, p in self(x, gen, path + (i,)):
@@ -108,7 +108,7 @@ def gen_variants(self, obj: (list, tuple), gen, path):
                     for variant in variants], p)
 
 
-@overload
+@overload  # noqa: F811
 def gen_variants(self, obj: numpy.ndarray, gen, path):
     for coord in itertools.product(*[range(d) for d in obj.shape]):
         for variants, p in self(obj[coord], gen, path + (coord,)):
@@ -180,7 +180,7 @@ class GradTester:
 
         """
         results: Dict[str, float] = {}
-        z = zeros_like(self.out)
+        z = _zeros_like(self.out)
         for (out_sen,), opath in gen_variants(z, lambda x: [1.0], ()):
             grads = self.gfn(*self.args, self.unwrap(out_sen))
             for ipath in gen_paths(grads, ()):

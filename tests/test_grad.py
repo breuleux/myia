@@ -5,7 +5,7 @@ from types import FunctionType
 
 from myia.api import standard_debug_pipeline, Optimizer
 from myia.composite import grad
-from myia.debug.finite_diff import gen_variants, GradTester
+from myia.debug.finite_diff import GradTester
 from myia.dtype import JTagged as JT, EnvType as Env
 from myia.grad import J as realJ
 from myia.infer import InferenceError
@@ -13,14 +13,11 @@ from myia.opt import lib as optlib, CSE
 from myia.pipeline import pipeline_function
 from myia.prim import ops as P, Primitive
 from myia.prim.py_implementations import scalar_cast, J, Jinv, \
-    array_reduce, scalar_add, typeof, scalar_gt
-from myia.prim.grad_implementations import augmented_graphs
+    array_reduce, scalar_add, typeof
 from myia.prim.py_implementations import py_implementations as pyi
 
-from .common import B, T, L, F, i16, i32, i64, u64, f16, f32, f64, \
-    li32, li64, lf64, ai16, ai32, ai64, af16, af32, af64, Nil, \
-    Point, Point_t, Point3D, Point3D_t, Thing_f, Thing_ftup, mysum
-from .test_infer import infer, infer_std, af16_of, af32_of
+from .common import T, i64, f16, f32, f64, af16, af32
+from .test_infer import infer_std, af16_of, af32_of
 
 
 step_optgrad = Optimizer.partial(

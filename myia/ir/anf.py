@@ -142,12 +142,14 @@ class Graph:
         return self.manager.free_variables_total[self]
 
     @property
-    def free_variables_indirect(self):
+    def free_variables_nodes(self):
+        """Returns all free variables that are nodes."""
         return {fv for fv in self.free_variables_total
                 if isinstance(fv, ANFNode)}
 
     @property
     def free_variables_graphs(self):
+        """Returns all free variables that are graphs."""
         return {fv for fv in self.free_variables_total
                 if isinstance(fv, Graph)}
 

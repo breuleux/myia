@@ -10,7 +10,7 @@ from ..dtype import Int, Float, Bool, Tuple, List, Array, UInt, Number, \
 from ..infer import ANYTHING, GraphInferrer, PartialInferrer, \
     MyiaTypeError, register_inferrer, Track, Inferrer, MetaGraphInferrer, \
     ExplicitInferrer, VOID, TransformedReference, MultiInferrer, \
-    Context, DummyInferrer
+    DummyInferrer
 from ..infer.jinf import JInferrer
 from ..ir import Graph, MetaGraph
 from ..utils import Namespace, Var, RestrictedVar, is_dataclass_type

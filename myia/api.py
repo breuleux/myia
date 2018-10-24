@@ -10,9 +10,8 @@ from . import dtype, parser, composite as C, operations
 from .cconv import closure_convert
 from .dtype import Tuple, List, Class, Array, Int, Float, Bool, \
     Number, tag_to_dataclass, ismyiatype, type_to_np_dtype, \
-    TypeMeta, Function, JTagged, SymbolicKeyType, EnvType
-from .infer import InferenceEngine, Inferrer, ANYTHING, \
-    Context, Contextless, CONTEXTLESS, reify
+    TypeMeta, Function
+from .infer import InferenceEngine, ANYTHING, Context
 from .ir import Graph, clone, GraphManager
 from .opt import PatternEquilibriumOptimizer, lib as optlib, CSE, \
     erase_class
@@ -830,8 +829,6 @@ step_opt = Optimizer.partial(
             optlib.multiply_by_one_r,
             optlib.multiply_by_zero_l,
             optlib.multiply_by_zero_r,
-            optlib.expand_metagraph,
-            optlib.resolve_globals,
         ],
         cse=CSE.partial(report_changes=False),
         renormalize='renormalize'

@@ -4,9 +4,9 @@ from ..graph_utils import dfs
 from ..dtype import type_cloner, ismyiatype, JTagged, Function
 from ..infer import Inferrer
 from ..ir import succ_incoming, freevars_boundary, Graph, Constant, \
-    GraphCloner, clone, MetaGraph
+    GraphCloner, MetaGraph
 from ..prim import Primitive, ops as P
-from ..utils import Namespace, UNKNOWN
+from ..utils import Namespace, UNKNOWN, overload
 from ..utils.unify import Var, var, SVar
 
 from .opt import \
@@ -107,7 +107,10 @@ _BubbleBinary = primset_var(P.scalar_add)
 
 @pattern_replacer(_BubbleBinary, (P.make_tuple, Xs), (P.make_tuple, Ys))
 def bubble_op_tuple_binary(optimizer, node, equiv):
-    """Replace (x, y, ...) + (a, b, ...) => (x + a, y + b, ...)."""
+    """Replace F((x, y, ...), (a, b, ...)) => (F(x, a), F(y, b), ...).
+
+    Only works for a specific list of Fs.
+    """
     xs = equiv[Xs]
     ys = equiv[Ys]
     op = equiv[_BubbleBinary]
@@ -123,6 +126,10 @@ _BubbleUnary = primset_var(P.J, P.Jinv)
 
 @pattern_replacer(_BubbleUnary, (P.make_tuple, Xs))
 def bubble_op_tuple_unary(optimizer, node, equiv):
+    """Replace F((x, y, ...)) => (F(x), F(y), ...).
+
+    Only works for a specific list of Fs.
+    """
     xs = equiv[Xs]
     op = equiv[_BubbleUnary]
     elems = [(op, x) for x in xs]
@@ -373,6 +380,7 @@ def drop_into_if(optimizer, node, equiv):
 #################
 
 
+# J(Jinv(x)) ==> x
 elim_j_jinv = psub(
     pattern=(P.J, (P.Jinv, X)),
     replacement=X,
@@ -380,6 +388,7 @@ elim_j_jinv = psub(
 )
 
 
+# Jinv(J(x)) ==> x
 elim_jinv_j = psub(
     pattern=(P.Jinv, (P.J, X)),
     replacement=X,
@@ -389,6 +398,10 @@ elim_jinv_j = psub(
 
 @pattern_replacer(P.J, C)
 def expand_J(optimizer, node, equiv):
+    """Replaces a call to J(f) by the graph for J(f).
+
+    This will not replace J(x) when x is not a constant graph.
+    """
     from ..grad import J as Jimpl
     arg = equiv[C].value
     try:
@@ -398,16 +411,16 @@ def expand_J(optimizer, node, equiv):
     return Constant(newg)
 
 
-@pattern_replacer(MG, Xs)
-def expand_metagraph(optimizer, node, equiv):
-    mg = equiv[MG].value
-    xs = equiv[Xs]
-    types = [x.type for x in xs]
-    if any(t is UNKNOWN for t in types):
-        return node
-    g = mg.specialize_from_types(types)
-    sexp = (g, *xs)
-    return sexp_to_node(sexp, node.graph)
+# @pattern_replacer(MG, Xs)
+# def expand_metagraph(optimizer, node, equiv):
+#     mg = equiv[MG].value
+#     xs = equiv[Xs]
+#     types = [x.type for x in xs]
+#     if any(t is UNKNOWN for t in types):
+#         return node
+#     g = mg.specialize_from_types(types)
+#     sexp = (g, *xs)
+#     return sexp_to_node(sexp, node.graph)
 
 
 @type_cloner.variant
@@ -415,13 +428,17 @@ def _noinferrer(self, x: Inferrer):
     raise TypeError('Has inferrer')
 
 
-@type_cloner.variant
+@overload  # noqa: F811
 def _noinferrer(self, x: Function):
     raise TypeError('Has Function')
 
 
 @pattern_replacer(P.J, X)
 def elim_j(optimizer, node, equiv):
+    """Eliminate J(x) when x doesn't contain any inferrers.
+
+    This is only safe if elim_jinv/jct are also run.
+    """
     x = equiv[X]
     if x.type is UNKNOWN:
         return node
@@ -434,6 +451,10 @@ def elim_j(optimizer, node, equiv):
 
 @pattern_replacer(P.Jinv, X)
 def elim_jinv(optimizer, node, equiv):
+    """Eliminate Jinv(x) when x doesn't contain any inferrers.
+
+    This is only safe if elim_j/jct are also run.
+    """
     x = equiv[X]
     if x.type is UNKNOWN:
         return node
@@ -446,6 +467,10 @@ def elim_jinv(optimizer, node, equiv):
 
 @pattern_replacer('just', C)
 def elim_jct(optimizer, node, equiv):
+    """Strip JTagged type from constants.
+
+    This is only safe if elim_j/jinv are also run.
+    """
     ct = equiv[C]
     if ismyiatype(ct.type, JTagged):
         ct.type = ct.type.subtype

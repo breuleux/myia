@@ -11,7 +11,7 @@ from ..dtype import EnvType, EnvInstance
 from ..infer import ANYTHING, GraphInferrer, register_inferrer, \
     PartialInferrer, Track, MyiaShapeError, Inferrer,  MetaGraphInferrer, \
     InferenceError, MyiaTypeError, TransformedReference, MultiInferrer, \
-    Context, DummyInferrer
+    DummyInferrer
 from ..infer.jinf import JInferrer
 from ..ir import Graph, MetaGraph
 from ..dtype import Array, Tuple, List, Class, TypeType, ismyiatype, \
