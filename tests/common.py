@@ -136,7 +136,7 @@ def to_abstract_test(self, tup: tuple):
 
 @overload  # noqa: F811
 def to_abstract_test(self, l: list):
-    assert len(l) == 1
+    assert len(l) >= 1
     return AbstractList(self(l[0]))
 
 

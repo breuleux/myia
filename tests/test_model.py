@@ -38,11 +38,6 @@ def zeros(*shp, dtype='float64'):
 #########
 
 
-def tanh(x):
-    e = numpy.exp(-2 * x)
-    return (1 - e) / (1 + e)
-
-
 @dataclass(frozen=True)
 class TanhLayer:
     W: Array
@@ -50,6 +45,24 @@ class TanhLayer:
 
     def apply(self, input):
         return numpy.tanh(input @ self.W + self.b)
+
+
+@dataclass(frozen=True)
+class RNNLayer:
+    W: Array
+    R: Array
+    b: Array
+    h0: Array
+
+    def step(self, x, h_tm1):
+        return numpy.tanh((x @ self.W) + (h_tm1 @ self.R) + self.b)
+
+    def apply(self, x):
+        h = self.h0
+        for e in x:
+            h = self.step(e, h)
+        # Maybe collect and return the full list of outputs?
+        return h
 
 
 @dataclass(frozen=True)
@@ -77,8 +90,13 @@ def make_model(dtype='float64'):
     )
 
 
-Model_t = pytype_to_myiatype(Model, make_model())
-Model_t_f32 = pytype_to_myiatype(Model, make_model('float32'))
+def make_rnn():
+    return Model(
+        layers=(
+            RNNLayer(MA(6, 10), MB(10, 10), zeros(1, 10), zeros(2, 10)),
+            TanhLayer(MC(10, 8), zeros(1, 8)),
+        )
+    )
 
 
 def cost(model, x, y):
@@ -115,6 +133,7 @@ def test_forward_profile(model, x):
      MC(3, 6, dtype='float32'),
      MC(3, 8, dtype='float32'),
      make_model('float32')),
+    (make_rnn(), [MA(2, 6), MB(2, 6), MC(2, 6)], MC(2, 8), make_rnn()),
 )
 def test_backward_infer(model, x, y):
     return grad(cost)(model, x, y)
@@ -124,4 +143,11 @@ def test_backward_infer(model, x, y):
            pipeline=standard_pipeline,
            rel_error=1e-1)
 def test_backward_specialize(model, x, y):
+    return cost(model, x, y)
+
+
+@grad_test((make_rnn(), [MA(2, 6), MB(2, 6), MC(2, 6)], MC(2, 8)),
+           pipeline=standard_pipeline,
+           rel_error=1e-1)
+def test_backward_specialize_rnn(model, x, y):
     return cost(model, x, y)
