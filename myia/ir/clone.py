@@ -183,6 +183,8 @@ class GraphCloner:
 
     def clone_disconnected(self, droot):
         """Clone a subgraph that's not (yet) connected to its graph/manager."""
+        if droot.graph not in self.repl:
+            return droot
         if self._clone_node(droot, self.repl[droot.graph]):
             new = self.repl[droot]
             if droot.is_apply():
