@@ -598,7 +598,11 @@ class MetaGraphInferrer(BaseGraphInferrer):
                 raise TypeDispatchError(self.metagraph, types)
             g = engine.pipeline.resources.convert(g)
             self.graph_cache[args] = g
-        return self.graph_cache[args]
+        else:
+            g = self.graph_cache[args]
+        if not g._manager:
+            g = engine.pipeline.resources.convert(g)
+        return g
 
 
 class PartialInferrer(Inferrer):
