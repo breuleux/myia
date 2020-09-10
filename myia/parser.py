@@ -1022,8 +1022,8 @@ class Block:
         """
         varnum = self.phi_nodes[phi]
         for pred in self.preds:
-            arg = pred.read(varnum)
             jump = pred.jumps[self]
+            arg = pred.read(varnum, U=jump.inputs[-1])
             if self.use_universe:
                 jump.inputs.insert(-1, arg)
             else:
@@ -1083,7 +1083,7 @@ class Block:
         """Return a subtree that resolves a name in the operations module."""
         return self.make_resolve(operations_ns, symbol_name)
 
-    def read(self, varnum: str, resolve_globals=True, lock=False) -> ANFNode:
+    def read(self, varnum: str, resolve_globals=True, lock=False, *, U=None) -> ANFNode:
         """Read a variable.
 
         If this name has defined given in one of the previous statements, it
@@ -1102,7 +1102,10 @@ class Block:
                 for which it should be locked.
         """
         if varnum in self.variables:
-            self.parser.read_cache.add((self, varnum, self.variables[varnum]))
+            if self.universe:
+                return self._read_cell(self.variables[varnum], U=U)
+            self.parser.read_cache.add((self, varnum,
+                                        self.variables[varnum]))
             node = self.variables[varnum]
             if (
                 node.is_constant_graph()
@@ -1165,9 +1168,34 @@ class Block:
                 f" after it was captured by function '{self.lock[varnum]}'.",
                 loc=current_info().location,
             )
-        self.variables[varnum] = node
-        if track and not node.is_parameter():
-            self.parser.write_cache.add((self, varnum, node))
+        if self.universe:
+            if varnum not in self.variables:
+                self.variables[varnum] = self._make_cell(node)
+            else:
+                self._write_cell(self.variables[varnum], node)
+        else:
+            self.variables[varnum] = node
+            if track and not node.is_parameter():
+                self.parser.write_cache.add((self, varnum, node))
+
+    def _make_cell(self, val):
+        tpl1 = self.graph.apply(operations.make_handle,
+                                self.graph.apply(operations.typeof, val),
+                                self.universe)
+        U = self.graph.apply(operations.tuple_getitem, tpl1, 0)
+        h = self.graph.apply(operations.tuple_getitem, tpl1, 1)
+        self.universe = self.graph.apply(operations.universe_setitem,
+                                         U, h, val)
+        return h
+
+    def _read_cell(self, h, *, U=None):
+        if U is None:
+            U = self.universe
+        return self.graph.apply(operations.universe_getitem, U, h)
+
+    def _write_cell(self, h, v):
+        self.universe = self.graph.apply(operations.universe_setitem,
+                                         self.universe, h, v)
 
     def jump(self, target: "Block", *args) -> Apply:
         """Jumping from one block to the next becomes a tail call.
