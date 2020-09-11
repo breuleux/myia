@@ -31,6 +31,17 @@ def increment(h):
     return cell_set(h, add_one(cell_get(h)))
 
 
+def test_simple():
+    @umyia
+    def fn(x):
+        i = x
+        while i > 0:
+            i = 0
+        return x
+
+    assert fn(0) == 2
+
+
 def test_increment():
     @umyia
     def plus4(x):
