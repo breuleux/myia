@@ -574,6 +574,15 @@ setitem_dead = psub(
 )
 
 
+##################################
+# Universe-related optimizations #
+##################################
+
+cancel_universe_get_set = psub(
+    pattern=(P.universe_getitem, (P.universe_setitem, X, Y, Z), Y),
+    replacement=Z, name="cancel_universe_get_set"
+)
+
 ######################
 # Branch elimination #
 ######################
