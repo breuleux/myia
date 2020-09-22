@@ -39,7 +39,7 @@ def test_simple():
             i = 0
         return x
 
-    assert fn(0) == 2
+    assert fn(1) == 1
 
 
 def test_increment():
