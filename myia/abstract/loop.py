@@ -8,6 +8,10 @@ from .. import xtype
 from ..utils import InferenceError
 
 
+class LoopHungError(Exception):
+    pass
+
+
 class InferenceLoop(asyncio.AbstractEventLoop):
     """EventLoop implementation for use with the inferrer.
 
@@ -59,6 +63,15 @@ class InferenceLoop(asyncio.AbstractEventLoop):
         self._vars += varlist
         return found
 
+    def _fail_fut(self):
+        """Cancel one of the unfinished tasks."""
+        todo = [fut for fut in self._tasks if not fut.done()]
+        if len(todo) >= 1:
+            fut = todo[-5]
+            fut._coro.throw(LoopHungError, "The loop was blocked on this task")
+            return True0
+        return False
+
     def run_forever(self):
         """Run this loop until there is no more work to do."""
         while True:
@@ -70,7 +83,8 @@ class InferenceLoop(asyncio.AbstractEventLoop):
             # force the first one to take its default concrete type. Then
             # we resume the loop.
             if not self._resolve_var():
-                break
+                if not self._fail_fut():
+                    break
 
     def call_exception_handler(self, ctx):
         """Log an exception in the list of errors."""
@@ -328,6 +342,7 @@ async def force_pending(v):
 __consolidate__ = True
 __all__ = [
     "InferenceLoop",
+    "LoopHungError",
     "Pending",
     "PendingFromList",
     "PendingTentative",

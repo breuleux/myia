@@ -43,7 +43,7 @@ from .data import (
     TransformedFunction,
     TypedPrimitive,
 )
-from .loop import InferenceLoop, Pending, force_pending
+from .loop import InferenceLoop, Pending, force_pending, LoopHungError
 from .macro import AnnotationBasedChecker
 from .ref import (
     CONTEXTLESS,
@@ -934,7 +934,10 @@ async def _run_trace(inf, engine, outref, argrefs):
             " to enumerate that infinite union."
         )
     tracer().emit_call(**tracer_args)
-    result = await inf.run(engine, outref, argrefs)
+    try:
+        result = await inf.run(engine, outref, argrefs)
+    except LoopHungError:
+        raise InferenceError("The inference could not find a type for node", refs=[outref])
     tracer().emit_return(**tracer_args, result=result)
     return result
 
