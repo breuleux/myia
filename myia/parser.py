@@ -355,7 +355,8 @@ class Parser:
 
         """
         function_block, process = self._create_function(block, node)
-        block.write(node.name, Constant(function_block.graph), track=False)
+        block.write(node.name, Constant(function_block.graph), track=False,
+                    use_universe=False)
         self.finalizers[function_block.graph] = process
         return block
 
@@ -383,7 +384,8 @@ class Parser:
         # Use the same priority as python where an argument with the
         # same name will mask the function.
         graph = function_block.graph
-        function_block.write(node.name, Constant(graph), track=False)
+        function_block.write(node.name, Constant(graph), track=False,
+                             use_universe=False)
 
         def _finalize():
             return self._finalize_function(node, function_block)
@@ -977,6 +979,13 @@ class Block:
 
     """
 
+    class Handle:
+        def __init__(self, h):
+            self.handle = h
+
+        def is_constant_graph(self):
+            return False
+
     def __init__(
         self, parser: Parser, use_universe=False, type=None, **flags
     ) -> None:
@@ -1023,8 +1032,10 @@ class Block:
         varnum = self.phi_nodes[phi]
         for pred in self.preds:
             jump = pred.jumps[self]
-            arg = pred.read(varnum, U=jump.inputs[-1])
+            arg = pred._read(varnum)
             if self.use_universe:
+                if isinstance(arg, self.Handle):
+                    arg = pred._read_cell(arg.handle, U=jump.inputs[-1])
                 jump.inputs.insert(-1, arg)
             else:
                 jump.inputs.append(arg)
@@ -1083,7 +1094,7 @@ class Block:
         """Return a subtree that resolves a name in the operations module."""
         return self.make_resolve(operations_ns, symbol_name)
 
-    def read(self, varnum: str, resolve_globals=True, lock=False, *, U=None) -> ANFNode:
+    def _read(self, varnum: str, resolve_globals=True, lock=False) -> ANFNode:
         """Read a variable.
 
         If this name has defined given in one of the previous statements, it
@@ -1102,8 +1113,6 @@ class Block:
                 for which it should be locked.
         """
         if varnum in self.variables:
-            if self.universe:
-                return self._read_cell(self.variables[varnum], U=U)
             self.parser.read_cache.add((self, varnum,
                                         self.variables[varnum]))
             node = self.variables[varnum]
@@ -1132,7 +1141,7 @@ class Block:
             if not self.preds:
                 return _resolve()
             if len(self.preds) == 1 or nophi:
-                result = self.preds[0].read(
+                result = self.preds[0]._read(
                     varnum,
                     resolve_globals=False,
                     lock=lock
@@ -1145,12 +1154,18 @@ class Block:
             phi = Parameter(self.graph)
         self.add_parameter(phi)
         self.phi_nodes[phi] = varnum
-        self.write(varnum, phi)
+        self.write(varnum, phi, use_universe=False)
         if self.matured:
             self.set_phi_arguments(phi)
         return phi
 
-    def write(self, varnum: str, node: ANFNode, track=True) -> None:
+    def read(self, varnum: str, resolve_globals=True, lock=False) -> ANFNode:
+        res = self._read(varnum, resolve_globals, lock)
+        if isinstance(res, self.Handle):
+            res = self._read_cell(res.handle)
+        return res
+
+    def write(self, varnum: str, node: ANFNode, track=True, use_universe=True) -> None:
         """Write a variable.
 
         When assignment is used to bound a value to a name, we store this
@@ -1168,9 +1183,9 @@ class Block:
                 f" after it was captured by function '{self.lock[varnum]}'.",
                 loc=current_info().location,
             )
-        if self.universe:
+        if self.universe and use_universe:
             if varnum not in self.variables:
-                self.variables[varnum] = self._make_cell(node)
+                self.variables[varnum] = self.Handle(self._make_cell(node))
             else:
                 self._write_cell(self.variables[varnum], node)
         else:
