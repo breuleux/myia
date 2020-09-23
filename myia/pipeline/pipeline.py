@@ -156,8 +156,8 @@ class PipelineDefinition:
 
         """
 
-        def run(arg):
-            res = self.run(**{in_key: arg})
+        def run(arg, **kwargs):
+            res = self.run(**{in_key: arg}, **kwargs)
             return res[out_key]
 
         return run

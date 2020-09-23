@@ -15,6 +15,7 @@ from ..opt import (
     LambdaLiftRewriter,
     LocalPassOptimizer,
     NodeMap,
+    ParameterGetRewriter,
     RemoveUnusedParameters,
     lib as optlib,
 )
@@ -315,6 +316,7 @@ step_opt = Optimizer.partial(
             optlib.setitem_tuple,
             optlib.setitem_tuple_ct,
             optlib.cancel_tuple_reconstruction,
+            optlib.lift_getitem,
             optlib.elim_j_jinv,
             optlib.elim_jinv_j,
             optlib.replace_Jinv_on_graph,
@@ -352,6 +354,9 @@ step_opt2 = Optimizer.partial(
         rmunused=GraphInterfaceRewriterOpt.partial(
             rewriter=RemoveUnusedParameters
         ),
+        liftget=GraphInterfaceRewriterOpt.partial(
+            rewriter=ParameterGetRewriter
+        ),
         dde=DeadDataElimination.partial(),
         main=[
             optlib.force_constants,
@@ -372,6 +377,7 @@ step_opt2 = Optimizer.partial(
             optlib.gadd_switch,
             optlib.setitem_dead,
             optlib.elim_stop_gradient,
+            optlib.cancel_universe_get_set,
         ],
         cse=CSE.partial(report_changes=False),
     )

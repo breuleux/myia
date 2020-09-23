@@ -34,7 +34,7 @@ short_relation_symbols = {
     "for_after": "↓",
     "specialized": "+",
     "equiv": "",
-    "grad_fprop_app": "",
+    "grad_fprop_app": "◆",
     "grad_bprop_app": "▼",
     "grad_fprop": "▶",
     "grad_bprop": "◀",

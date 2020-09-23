@@ -191,6 +191,15 @@ def cancel_tuple_reconstruction(resources, node, equiv):
         return xs
 
 
+@pattern_replacer(P.tuple_getitem, X, Y)
+def lift_getitem(resources, node, equiv):
+    """If x[y] is in graph G1 and x is in graph G2, move x[y] to G2."""
+    x = equiv[X]
+    y = equiv[Y]
+    if x.graph is not None and node.graph is not x.graph and (y.is_constant() or y.graph not in node.graph.scope):
+        return x.graph.apply(P.tuple_getitem, x, y)
+
+
 ###########################
 # gadd optimizations #
 ###########################
@@ -672,6 +681,13 @@ float_env_getitem_through_switch = psub(
         (P.env_getitem, X3, X4, X5),
     ),
     name="float_env_getitem_through_switch",
+)
+
+
+cancel_universe_get_set = psub(
+    pattern=(P.universe_getitem, (P.universe_setitem, X, Y, Z), Y),
+    replacement=Z,
+    name="cancel_universe_get_set",
 )
 
 

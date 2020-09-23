@@ -1,13 +1,15 @@
 """Optimizations that rewrite graph interfaces."""
 
 import operator
+from collections import defaultdict
 from functools import lru_cache, reduce
 from types import SimpleNamespace as NS
 
 from ..info import About
-from ..ir import Graph, Parameter
+from ..ir import Graph, Parameter, sexp_to_node
 from ..operations import primitives as P
 from ..utils import OrderedSet, Partializable, WorkSet, tracer
+from ..utils.variables import X
 from .dde import make_dead
 
 
@@ -377,6 +379,117 @@ class LambdaLiftRewriter(GraphInterfaceRewriter):
         return True
 
 
+class ParameterGetRewriter(GraphInterfaceRewriter):
+    """Rewrite functions that deconstruct tuple/universe arguments.
+
+    Given definition and use::
+
+        def f(x, y, z, U):
+            return x[0] + x[1] + y[0] + y[z] + uget(U, k)
+
+        f(a, b, c, V)
+
+    We aim to produce::
+
+        def f(x0, x1, y, y0, z, Uk):
+            return x0 + x1 + y0 + y[z] + Uk
+
+        f(a[0], a[1], b, b[0], z, uget(V, k))
+
+    * If x is a tuple and all uses are tuple_getitem with constant indexes,
+      we replace argument x by its elements, and we move the tuple_getitems
+      to the caller's scope.
+    * If there is a tuple_getitem with an unknown index, we still pass the
+      tuple.
+    * Same principle for universe_getitem: we move them to the caller if we
+      can. If the universe is used for any other purpose, we keep it.
+    """
+
+    relation = "get"
+
+    def filter(self, entry, all_entries):
+        params_grouped = zip(*[[(g, p) for p in g.parameters] for g in entry.eqv])
+        new_params = []
+        interesting = False
+        for params in params_grouped:
+            # For this parameter, gets maps either None or a sexp with a
+            # variable to a set of apply nodes. If None that means the
+            # parameter is used in a way that requires us to still pass it. The
+            # sexp with a variable represents an extra parameter we will add to
+            # the list, and the pattern that must be used on the node that's
+            # originally passed by the caller to obtain the new parameter.
+            gets = defaultdict(lambda: defaultdict(OrderedSet))
+            for g, p in params:
+                for node, key in self.manager.uses[p]:
+                    if node.is_apply(P.tuple_getitem) and key == 1:
+                        idx = node.inputs[2]
+                        if idx.is_constant() or idx.graph not in g.scope:
+                            gets[(P.tuple_getitem, X, idx)][g].add(node)
+                            interesting = True
+                        else:
+                            gets[None][g] = {}
+                    elif node.is_apply(P.universe_getitem) and key == 1:
+                        idx = node.inputs[2]
+                        if idx.is_constant() or idx.graph not in g.scope:
+                            gets[(P.universe_getitem, X, idx)][g].add(node)
+                            interesting = True
+                        else:
+                            gets[None][g] = {}
+                    else:
+                        gets[None][g] = {}
+            new_params.append(gets)
+        if interesting:
+            entry.new_params = new_params
+            return True
+        else:
+            return False
+
+    def rewrite_call(self, node, entry):
+        new_inputs = []
+        graphs = entry.calls[node]
+        for inp, param_spec in zip(node.inputs[1:], entry.new_params):
+            if not param_spec:
+                continue
+            for spec, gmap in param_spec.items():
+                if spec is None:
+                    # We pass the original parameter
+                    new_inputs.append(inp)
+                else:
+                    # We pass the parameter transformed through the pattern
+                    # so that it e.g. performs a tuple_getitem in the caller
+                    # instead of inside the function.
+                    new_input = sexp_to_node(spec, node.graph, sub={X: inp})
+                    new_inputs.append(new_input)
+
+        new_node = node.graph.apply(
+            node.inputs[0],
+            *new_inputs,
+        )
+        new_node.abstract = node.abstract
+        self.manager.replace(node, new_node)
+        return True
+
+    def rewrite_graph(self, entry):
+        new_parameters = []
+        with self.manager.transact() as tr:
+            for p, param_spec in zip(entry.graph.parameters, entry.new_params):
+                if not param_spec:
+                    continue
+                for spec, gs in param_spec.items():
+                    if spec is None:
+                        # This is the original parameter we still have to pass
+                        new_parameters.append(p)
+                    else:
+                        # New parameter that will be passed by the caller
+                        to_sub = gs[entry.graph]
+                        param = self.param(entry.graph, list(to_sub)[0])
+                        for node in to_sub:
+                            tr.replace(node, param)
+                        new_parameters.append(param)
+            tr.set_parameters(entry.graph, new_parameters)
+        return True
+
+
 ##########################
 # LAMBDA LIFTING EXAMPLE #
 ##########################
@@ -467,5 +580,6 @@ __all__ = [
     "GraphInterfaceRewriter",
     "GraphInterfaceRewriterOpt",
     "LambdaLiftRewriter",
+    "ParameterGetRewriter",
     "RemoveUnusedParameters",
 ]
