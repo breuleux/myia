@@ -33,13 +33,13 @@ def increment(h):
 
 def test_simple():
     @umyia
-    def fn(x):
-        i = x
-        while i > 0:
-            i = 0
+    def fn(x, y):
+        while y > 0:
+            y = y - 1
+            x = x * x
         return x
 
-    assert fn(1) == 1
+    assert fn(2, 1) == 4
 
 
 def test_increment():
