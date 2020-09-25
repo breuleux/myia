@@ -355,8 +355,7 @@ class Parser:
 
         """
         function_block, process = self._create_function(block, node)
-        block.write(node.name, Constant(function_block.graph), track=False,
-                    use_universe=False)
+        block.write(node.name, Constant(function_block.graph), track=False)
         self.finalizers[function_block.graph] = process
         return block
 
@@ -384,8 +383,7 @@ class Parser:
         # Use the same priority as python where an argument with the
         # same name will mask the function.
         graph = function_block.graph
-        function_block.write(node.name, Constant(graph), track=False,
-                             use_universe=False)
+        function_block.write(node.name, Constant(graph), track=False)
 
         def _finalize():
             return self._finalize_function(node, function_block)
