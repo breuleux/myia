@@ -583,6 +583,34 @@ cancel_universe_get_set = psub(
     replacement=Z, name="cancel_universe_get_set"
 )
 
+
+@pattern_replacer(P.universe_setitem, X, Y, Z)
+def remove_unused_universe_set(resources, node, equiv):
+    # X == universe, Y = handle, Z = val
+    handle = equiv[Y]
+    mng = node.graph.manager
+    uses = mng.uses[handle]
+
+    if len(uses) == 1 or all(u[0].inputs[0].is_constant() and
+                             u[0].inputs[0].value is P.universe_setitem
+                             for u in uses):
+        return equiv[X] # return the old universe
+    return None
+
+
+@pattern_replacer(P.tuple_getitem, (P.make_handle, X, Y), 0)
+def remove_unused_make_handle(resources, node, equiv):
+    # X == type, Y = universe, node = universe
+    mng = node.graph.manager
+    mk = node.inputs[1] # the make_handle
+    uses = mng.uses[mk]
+
+    # If there is a single use it is this getitem so the handle is unused
+    if len(uses) == 1:
+        return equiv[Y] # return the old universe
+    return None
+
+
 ######################
 # Branch elimination #
 ######################
