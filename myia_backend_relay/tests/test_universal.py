@@ -34,12 +34,13 @@ def increment(h):
 def test_simple():
     @umyia
     def fn(x, y):
-        while y > 0:
-            y = y - 1
-            x = x * x
-        return x
+        a = y
+        while x > 0:
+            a = a - 1
+            x = x - 1
+        return a
 
-    assert fn(2, 1) == 4
+    assert fn(2, 1) == -1
 
 
 def test_increment():

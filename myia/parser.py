@@ -318,6 +318,9 @@ class Parser:
         _finalize()
         for node in dfs(main_block.graph.return_, succ_deeper):
             if node.is_constant_graph():
+                fin = self.finalizers.pop(node.value, False)
+                if fin:
+                    fin()
                 if node.value.return_ is None:
                     raise MyiaSyntaxError(
                         "Function doesn't return a value in all cases",

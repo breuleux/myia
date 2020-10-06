@@ -578,28 +578,52 @@ setitem_dead = psub(
 # Universe-related optimizations #
 ##################################
 
+
 cancel_universe_get_set = psub(
     pattern=(P.universe_getitem, (P.universe_setitem, X, Y, Z), Y),
     replacement=Z, name="cancel_universe_get_set"
 )
 
 
-@pattern_replacer(P.universe_setitem, X, Y, Z)
-def remove_unused_universe_set(resources, node, equiv):
-    # X == universe, Y = handle, Z = val
+def remove_unused_universe_set_cond(equiv):
     handle = equiv[Y]
-    mng = node.graph.manager
+    mng = handle.graph.manager
     uses = mng.uses[handle]
 
-    if len(uses) == 1 or all(u[0].inputs[0].is_constant() and
-                             u[0].inputs[0].value is P.universe_setitem
-                             for u in uses):
-        return equiv[X] # return the old universe
-    return None
+    return (handle.is_apply() and
+            handle.inputs[0].is_constant() and
+            handle.inputs[0].value is P.tuple_getitem and
+            handle.inputs[2].is_constant(int) and
+            handle.inputs[2].value == 1 and
+            handle.inputs[1].is_apply() and
+            handle.inputs[1].inputs[0].is_constant() and
+            handle.inputs[1].inputs[0].value is P.make_handle and
+            all(u[0].inputs[0].is_constant() and
+                u[0].inputs[0].value is P.universe_setitem and
+                u[1] == 2
+                for u in uses))
 
+
+remove_unused_universe_set = psub(
+    pattern=(P.universe_setitem, X, Y, Z),
+    replacement=Y,
+    #Y matches (P.tuple_getitem, (P.make_handle, X1, X2), 1)
+    condition=remove_unused_universe_set_cond,
+    name="remove_unused_universe_set")
+
+
+def remove_unused_make_handle_cond(equiv):
+    breakpoint()
+    return False
+
+remove_unused_make_handle = psub(
+    pattern=(P.tuple_getitem, (P.make_handle, X, Y), 0),
+    replacement=Y,
+    condition=remove_unused_make_handle_cond,
+    name="remove_unused_make_handle")
 
 @pattern_replacer(P.tuple_getitem, (P.make_handle, X, Y), 0)
-def remove_unused_make_handle(resources, node, equiv):
+def Xremove_unused_make_handle(resources, node, equiv):
     # X == type, Y = universe, node = universe
     mng = node.graph.manager
     mk = node.inputs[1] # the make_handle

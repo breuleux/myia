@@ -43,7 +43,7 @@ from .data import (
     TransformedFunction,
     TypedPrimitive,
 )
-from .loop import InferenceLoop, Pending, force_pending, LoopHungError
+from .loop import InferenceLoop, LoopHungError, Pending, force_pending
 from .macro import AnnotationBasedChecker
 from .ref import (
     CONTEXTLESS,
