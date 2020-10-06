@@ -81,6 +81,10 @@ def step_infer(resources, graph, argspec):
     orig_argspec = argspec
     if resources.universal:
         argspec = (*argspec, type_to_abstract(UniverseType))
+    from ..ir import print_graph
+    print("BEFORE INFER")
+    for g in graph.manager.graphs:
+        print(print_graph(g))
     outspec, context = resources.inferrer(graph, argspec)
     if not nobottom(outspec):
         raise InferenceError(
@@ -358,6 +362,10 @@ def step_validate(resources, graph, outspec=None):
     Outputs:
         None.
     """
+    from ..ir import print_graph
+    print("AFTER OPT")
+    for g in graph.manager.graphs:
+        print(print_graph(g))
     if graph.output.abstract != outspec:
         raise ValidationError(
             "The output type of the graph changed during optimization"
