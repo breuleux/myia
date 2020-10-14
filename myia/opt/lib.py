@@ -585,45 +585,89 @@ cancel_universe_get_set = psub(
 )
 
 
+def _find_value(node, handle):
+    """Find matching value for handle incrementally.
+
+    From a universe node, this function finds the next universe apply
+    and returns a tuple of (the previous universe node, the value that
+    matches the handle given)
+
+    One of the tuple elements will always be None, which means that
+    the corresponding element was not found or is irrelevant.
+
+    If both are None, it means that a non-searchable callable was
+    encountered, usually a function.
+    """
+    # Check for a match for (P.tuple_getitem, P.make_handle(_, univ), 1)
+    if (node.is_apply() and
+            node.inputs[0].is_constant()):
+        prim = node.inputs[0].value
+
+        if (prim is P.tuple_getitem and
+            node.inputs[2].is_constant() and
+                node.inputs[2].value == 0):
+            node2 = node.inputs[1]
+            if (node2.is_apply() and
+                node2.inputs[0].is_constant() and
+                    node2.inputs[0].value is P.make_handle):
+                # Next universe in the chain
+                return (node2.inputs[2], None)
+
+        elif prim is P.universe_setitem:
+            if node.inputs[2] is handle:
+                # We found the value
+                return (None, node.inputs[3])
+            else:
+                # Next universe in the chain
+                return (node.inputs[1], None)
+
+    # We didn't find anything
+    return (None, None)
+
+
+@pattern_replacer(P.universe_getitem, X, Y)
+def cancel_universe_get_set_complex(resources, node, equiv):
+    # X = universe, Y = handle
+    univ = equiv[X]
+    handle = equiv[Y]
+    value = None
+
+    while univ is not None:
+        univ, value = _find_value(univ, handle)
+    return value  # may be None
+
+
 def remove_unused_universe_set_cond(equiv):
+    # This checks that Y matches (P.tuple_getitem, (P.make_handle, X1, X2), 1)
+    # and that all uses of Y are by universe_setitem in the handle position
+
     handle = equiv[Y]
     mng = handle.graph.manager
     uses = mng.uses[handle]
 
-    return (handle.is_apply() and
-            handle.inputs[0].is_constant() and
-            handle.inputs[0].value is P.tuple_getitem and
-            handle.inputs[2].is_constant(int) and
-            handle.inputs[2].value == 1 and
-            handle.inputs[1].is_apply() and
-            handle.inputs[1].inputs[0].is_constant() and
-            handle.inputs[1].inputs[0].value is P.make_handle and
-            all(u[0].inputs[0].is_constant() and
-                u[0].inputs[0].value is P.universe_setitem and
-                u[1] == 2
-                for u in uses))
+    return  (handle.is_apply() and
+             handle.inputs[0].is_constant() and
+             handle.inputs[0].value is P.tuple_getitem and
+             handle.inputs[2].is_constant(int) and
+             handle.inputs[2].value == 1 and
+             handle.inputs[1].is_apply() and
+             handle.inputs[1].inputs[0].is_constant() and
+             handle.inputs[1].inputs[0].value is P.make_handle and
+             all(u[0].inputs[0].is_constant() and
+                 u[0].inputs[0].value is P.universe_setitem and
+                 u[1] == 2
+                 for u in uses))
 
 
 remove_unused_universe_set = psub(
     pattern=(P.universe_setitem, X, Y, Z),
-    replacement=Y,
-    #Y matches (P.tuple_getitem, (P.make_handle, X1, X2), 1)
+    replacement=X,
     condition=remove_unused_universe_set_cond,
     name="remove_unused_universe_set")
 
 
-def remove_unused_make_handle_cond(equiv):
-    breakpoint()
-    return False
-
-remove_unused_make_handle = psub(
-    pattern=(P.tuple_getitem, (P.make_handle, X, Y), 0),
-    replacement=Y,
-    condition=remove_unused_make_handle_cond,
-    name="remove_unused_make_handle")
-
 @pattern_replacer(P.tuple_getitem, (P.make_handle, X, Y), 0)
-def Xremove_unused_make_handle(resources, node, equiv):
+def remove_unused_make_handle(resources, node, equiv):
     # X == type, Y = universe, node = universe
     mng = node.graph.manager
     mk = node.inputs[1] # the make_handle
