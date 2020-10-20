@@ -581,7 +581,8 @@ setitem_dead = psub(
 
 cancel_universe_get_set = psub(
     pattern=(P.universe_getitem, (P.universe_setitem, X, Y, Z), Y),
-    replacement=Z, name="cancel_universe_get_set"
+    replacement=Z,
+    name="cancel_universe_get_set",
 )
 
 
@@ -599,17 +600,20 @@ def _find_value(node, handle):
     encountered, usually a function.
     """
     # Check for a match for (P.tuple_getitem, P.make_handle(_, univ), 1)
-    if (node.is_apply() and
-            node.inputs[0].is_constant()):
+    if node.is_apply() and node.inputs[0].is_constant():
         prim = node.inputs[0].value
 
-        if (prim is P.tuple_getitem and
-            node.inputs[2].is_constant() and
-                node.inputs[2].value == 0):
+        if (
+            prim is P.tuple_getitem
+            and node.inputs[2].is_constant()
+            and node.inputs[2].value == 0
+        ):
             node2 = node.inputs[1]
-            if (node2.is_apply() and
-                node2.inputs[0].is_constant() and
-                    node2.inputs[0].value is P.make_handle):
+            if (
+                node2.is_apply()
+                and node2.inputs[0].is_constant()
+                and node2.inputs[0].value is P.make_handle
+            ):
                 # Next universe in the chain
                 return (node2.inputs[2], None)
 
@@ -645,37 +649,42 @@ def remove_unused_universe_set_cond(equiv):
     mng = handle.graph.manager
     uses = mng.uses[handle]
 
-    return  (handle.is_apply() and
-             handle.inputs[0].is_constant() and
-             handle.inputs[0].value is P.tuple_getitem and
-             handle.inputs[2].is_constant(int) and
-             handle.inputs[2].value == 1 and
-             handle.inputs[1].is_apply() and
-             handle.inputs[1].inputs[0].is_constant() and
-             handle.inputs[1].inputs[0].value is P.make_handle and
-             all(u[0].inputs[0].is_constant() and
-                 u[0].inputs[0].value is P.universe_setitem and
-                 u[1] == 2
-                 for u in uses))
+    return (
+        handle.is_apply()
+        and handle.inputs[0].is_constant()
+        and handle.inputs[0].value is P.tuple_getitem
+        and handle.inputs[2].is_constant(int)
+        and handle.inputs[2].value == 1
+        and handle.inputs[1].is_apply()
+        and handle.inputs[1].inputs[0].is_constant()
+        and handle.inputs[1].inputs[0].value is P.make_handle
+        and all(
+            u[0].inputs[0].is_constant()
+            and u[0].inputs[0].value is P.universe_setitem
+            and u[1] == 2
+            for u in uses
+        )
+    )
 
 
 remove_unused_universe_set = psub(
     pattern=(P.universe_setitem, X, Y, Z),
     replacement=X,
     condition=remove_unused_universe_set_cond,
-    name="remove_unused_universe_set")
+    name="remove_unused_universe_set",
+)
 
 
 @pattern_replacer(P.tuple_getitem, (P.make_handle, X, Y), 0)
 def remove_unused_make_handle(resources, node, equiv):
     # X == type, Y = universe, node = universe
     mng = node.graph.manager
-    mk = node.inputs[1] # the make_handle
+    mk = node.inputs[1]  # the make_handle
     uses = mng.uses[mk]
 
     # If there is a single use it is this getitem so the handle is unused
     if len(uses) == 1:
-        return equiv[Y] # return the old universe
+        return equiv[Y]  # return the old universe
     return None
 
 

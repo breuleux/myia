@@ -273,6 +273,7 @@ def print_graph(g, allow_cycles=True):
             return f"%{str(node)}"
 
     seen_graphs = set([g])
+
     def _succ_deep_once(node):
         if node.is_constant_graph():
             res = [node.value.return_] if node.value not in seen_graphs else []
@@ -282,7 +283,9 @@ def print_graph(g, allow_cycles=True):
             return node.incoming
 
     for node in _toposort(g.output, _succ_deep_once, allow_cycles=allow_cycles):
-        if (node.graph is not None and node.graph is not g) or node is g.return_:
+        if (
+            node.graph is not None and node.graph is not g
+        ) or node is g.return_:
             continue
         if node.is_apply():
             print(f"  %{str(node)} = ", end="", file=buf)

@@ -937,7 +937,9 @@ async def _run_trace(inf, engine, outref, argrefs):
     try:
         result = await inf.run(engine, outref, argrefs)
     except LoopHungError:
-        raise InferenceError("The inference could not find a type for node", refs=[outref])
+        raise InferenceError(
+            "The inference could not find a type for node", refs=[outref]
+        )
     tracer().emit_return(**tracer_args, result=result)
     return result
 

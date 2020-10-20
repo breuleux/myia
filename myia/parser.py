@@ -1114,8 +1114,7 @@ class Block:
                 for which it should be locked.
         """
         if varnum in self.variables:
-            self.parser.read_cache.add((self, varnum,
-                                        self.variables[varnum]))
+            self.parser.read_cache.add((self, varnum, self.variables[varnum]))
             node = self.variables[varnum]
             if (
                 node.is_constant_graph()
@@ -1166,7 +1165,9 @@ class Block:
             res = self._read_cell(res.handle)
         return res
 
-    def write(self, varnum: str, node: ANFNode, track=True, use_universe=True) -> None:
+    def write(
+        self, varnum: str, node: ANFNode, track=True, use_universe=True
+    ) -> None:
         """Write a variable.
 
         When assignment is used to bound a value to a name, we store this
@@ -1195,13 +1196,14 @@ class Block:
                 self.parser.write_cache.add((self, varnum, node))
 
     def _make_cell(self, val):
-        tpl1 = self.graph.apply(operations.make_handle,
-                                self.graph.apply(operations.typeof, val),
-                                self.universe)
+        tpl1 = self.graph.apply(
+            operations.make_handle,
+            self.graph.apply(operations.typeof, val),
+            self.universe,
+        )
         U = self.graph.apply(operations.tuple_getitem, tpl1, 0)
         h = self.graph.apply(operations.tuple_getitem, tpl1, 1)
-        self.universe = self.graph.apply(operations.universe_setitem,
-                                         U, h, val)
+        self.universe = self.graph.apply(operations.universe_setitem, U, h, val)
         return h
 
     def _read_cell(self, h, *, U=None):
@@ -1210,8 +1212,9 @@ class Block:
         return self.graph.apply(operations.universe_getitem, U, h)
 
     def _write_cell(self, h, v):
-        self.universe = self.graph.apply(operations.universe_setitem,
-                                         self.universe, h, v)
+        self.universe = self.graph.apply(
+            operations.universe_setitem, self.universe, h, v
+        )
 
     def jump(self, target: "Block", *args) -> Apply:
         """Jumping from one block to the next becomes a tail call.
