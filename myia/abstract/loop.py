@@ -67,9 +67,9 @@ class InferenceLoop(asyncio.AbstractEventLoop):
         """Cancel one of the unfinished tasks."""
         todo = [fut for fut in self._tasks if not fut.done()]
         if len(todo) >= 1:
-            fut = todo[-5]
+            fut = todo[-1]
             fut._coro.throw(LoopHungError, "The loop was blocked on this task")
-            return True0
+            return True
         return False
 
     def run_forever(self):
