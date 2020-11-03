@@ -654,7 +654,12 @@ def split_type(t, model):
       the model.
     """
     if isinstance(t, AbstractUnion):
-        matching = [(opt, typecheck(model, opt)) for opt in set(t.options)]
+        opts = t.options
+        if isinstance(opts, Pending):
+            if not opts.done():
+                opts.force_resolve()
+            opts = opts.result()
+        matching = [(opt, typecheck(model, opt)) for opt in set(opts)]
         t1 = union_simplify(opt for opt, m in matching if m)
         t2 = union_simplify(opt for opt, m in matching if not m)
         return t1, t2
