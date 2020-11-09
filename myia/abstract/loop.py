@@ -8,10 +8,6 @@ from .. import xtype
 from ..utils import InferenceError
 
 
-class LoopHungError(Exception):
-    pass
-
-
 class InferenceLoop(asyncio.AbstractEventLoop):
     """EventLoop implementation for use with the inferrer.
 
@@ -63,15 +59,6 @@ class InferenceLoop(asyncio.AbstractEventLoop):
         self._vars += varlist
         return found
 
-    def _fail_fut(self):
-        """Cancel one of the unfinished tasks."""
-        todo = [fut for fut in self._tasks if not fut.done()]
-        if len(todo) >= 1:
-            fut = todo[-1]
-            fut._coro.throw(LoopHungError, "The loop was blocked on this task")
-            return True
-        return False
-
     def run_forever(self):
         """Run this loop until there is no more work to do."""
         while True:
@@ -83,8 +70,7 @@ class InferenceLoop(asyncio.AbstractEventLoop):
             # force the first one to take its default concrete type. Then
             # we resume the loop.
             if not self._resolve_var():
-                if not self._fail_fut():
-                    break
+                break
 
     def call_exception_handler(self, ctx):
         """Log an exception in the list of errors."""
@@ -93,7 +79,7 @@ class InferenceLoop(asyncio.AbstractEventLoop):
         else:
             raise AssertionError("call_exception_handler", ctx)
 
-    def schedule(self, x, context_map=None):
+    def schedule(self, x, context_map=None, ref=None):
         """Schedule a task."""
         if context_map:
             ctx = copy_context()
@@ -101,7 +87,7 @@ class InferenceLoop(asyncio.AbstractEventLoop):
             fut = ctx.run(asyncio.ensure_future, x, loop=self)
         else:
             fut = asyncio.ensure_future(x, loop=self)
-        self._tasks.append(fut)
+        self._tasks.append((ref, fut))
         return fut
 
     def collect_errors(self):
@@ -109,14 +95,18 @@ class InferenceLoop(asyncio.AbstractEventLoop):
         futs, self._tasks = self._tasks, []
         errors, self._errors = self._errors, []
         errors += [
-            fut.exception() for fut in futs if fut.done() and fut.exception()
+            fut.exception() for _, fut in futs if fut.done() and fut.exception()
         ]
-        if not errors and any(fut for fut in futs if not fut.done()):
+        not_done = [ref for ref, fut in futs if not fut.done()]
+        if not errors and not_done:
             exc = self.errtype(
                 f"Could not run inference to completion."
                 " There might be an infinite loop in the program"
-                " which prevents type inference from working.",
-                refs=[],
+                " which prevents type inference from working. "
+                " The above is the set of blocked calls and does not "
+                " necessarily constitute a stack trace.",
+                refs=[x for x in not_done if x],
+                priority=-2,
             )
             errors.append(exc)
         return errors
@@ -342,7 +332,6 @@ async def force_pending(v):
 __consolidate__ = True
 __all__ = [
     "InferenceLoop",
-    "LoopHungError",
     "Pending",
     "PendingFromList",
     "PendingTentative",
